@@ -335,6 +335,7 @@ func brFetchPage(ctx context.Context, raw string) (*brPage, error) {
 	if err != nil {
 		return nil, err
 	}
+	norm = brSiteRewrite(norm)
 	ctx, cancel := context.WithTimeout(ctx, browserTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, norm, nil)
@@ -507,6 +508,7 @@ type brScan struct {
 	title, h1, body *html.Node
 	articles, mains []*html.Node
 	roleMains       []*html.Node
+	named           []*html.Node // 알려진 글 본문 영역 (네이버 블로그 등). article/main 보다 먼저 고름
 	baseHref        string
 	scanned         int
 }
@@ -538,6 +540,9 @@ func brScanDoc(n *html.Node, s *brScan, depth int) {
 			if s.baseHref == "" {
 				s.baseHref = brAttr(n, "href")
 			}
+		}
+		if brIsKnownBody(n) {
+			s.named = append(s.named, n)
 		}
 		if strings.EqualFold(brAttr(n, "role"), "main") && n.Data != "main" {
 			s.roleMains = append(s.roleMains, n)
@@ -641,6 +646,7 @@ func brExtract(p *brPage, doc *html.Node, final *url.URL) {
 	}
 	// 본문 후보: article 이 하나면 그것, 아니면 main, role=main 순. 글이 너무 짧으면 body 로 물러남.
 	var cands []*html.Node
+	cands = append(cands, s.named...)
 	if len(s.articles) == 1 {
 		cands = append(cands, s.articles[0])
 	}
@@ -1400,4 +1406,62 @@ func brFitLine(l brLine, w int) brLine {
 		last.t = string(rs[:len(rs)-1])
 	}
 	return out
+}
+
+// brSiteRewrite 는 자바스크립트가 본문을 따로 불러오는 사이트의 글 주소를, 서버가 완성된 HTML 로 주는 본문 주소로 바꿈.
+// 지금은 네이버 블로그만 다룸: blog.naver.com/<아이디>/<글번호> 는 빈 틀(frameset)만 오고 본문은 스크립트가 만든 iframe 에 있음.
+// 그 iframe 이 여는 PostView.naver 는 서버에서 본문을 완성해 주므로 곧바로 그 주소를 읽음. 해당하지 않으면 그대로 돌려줌.
+func brSiteRewrite(norm string) string {
+	u, err := url.Parse(norm)
+	if err != nil {
+		return norm
+	}
+	host := strings.ToLower(u.Hostname())
+	if host != "blog.naver.com" && host != "m.blog.naver.com" {
+		return norm
+	}
+	post := func(blogID, logNo string) string {
+		if blogID == "" || logNo == "" || brAllDigits(logNo) == false {
+			return norm
+		}
+		q := url.Values{"blogId": {blogID}, "logNo": {logNo}}
+		return "https://blog.naver.com/PostView.naver?" + q.Encode()
+	}
+	segs := strings.Split(strings.Trim(u.Path, "/"), "/")
+	switch {
+	case len(segs) == 2 && brAllDigits(segs[1]): // /<아이디>/<글번호>
+		return post(segs[0], segs[1])
+	case len(segs) == 1 && strings.EqualFold(segs[0], "PostView.naver"), len(segs) == 1 && strings.EqualFold(segs[0], "PostView.nhn"):
+		return norm
+	case len(segs) == 1 && u.Query().Get("logNo") != "" && !strings.Contains(segs[0], "."): // /<아이디>?Redirect=Log&logNo=...
+		return post(segs[0], u.Query().Get("logNo"))
+	case len(segs) == 1 && strings.HasPrefix(strings.ToLower(segs[0]), "postlist") && u.Query().Get("blogId") != "" && u.Query().Get("logNo") != "":
+		return post(u.Query().Get("blogId"), u.Query().Get("logNo"))
+	}
+	return norm
+}
+
+func brAllDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// brIsKnownBody 는 글 본문만 담고 있다고 알려진 영역인지: 네이버 블로그 스마트에디터(se-main-container)와 예전 에디터(postViewArea)
+func brIsKnownBody(n *html.Node) bool {
+	if brAttr(n, "id") == "postViewArea" {
+		return true
+	}
+	for _, c := range strings.Fields(brAttr(n, "class")) {
+		if c == "se-main-container" {
+			return true
+		}
+	}
+	return false
 }

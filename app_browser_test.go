@@ -1498,3 +1498,36 @@ func TestBrNoRealNetworkInUITests(t *testing.T) {
 		t.Errorf("가짜 fetch 가 쓰이지 않음: %q", a.msg)
 	}
 }
+
+func TestBrSiteRewriteNaverBlog(t *testing.T) {
+	post := "https://blog.naver.com/PostView.naver?blogId=abc&logNo=123456"
+	for in, want := range map[string]string{
+		"https://blog.naver.com/abc/123456":                                     post,
+		"https://m.blog.naver.com/abc/123456":                                   post,
+		"https://blog.naver.com/abc?Redirect=Log&logNo=123456":                  post,
+		"https://blog.naver.com/PostList.naver?blogId=abc&logNo=123456":         post,
+		"https://blog.naver.com/PostView.naver?blogId=abc&logNo=123456":         post,
+		"https://blog.naver.com/abc":                                            "https://blog.naver.com/abc",
+		"https://blog.naver.com/abc/notanumber":                                 "https://blog.naver.com/abc/notanumber",
+		"https://example.com/abc/123456":                                        "https://example.com/abc/123456",
+		"https://blog.naver.com.evil.example/abc/123456":                        "https://blog.naver.com.evil.example/abc/123456",
+		"https://blog.naver.com/abc/123456?from=x&a=" + strings.Repeat("b", 10): post,
+	} {
+		if got := brSiteRewrite(in); got != want {
+			t.Errorf("brSiteRewrite(%q) = %q, 기대 %q", in, got, want)
+		}
+	}
+}
+
+// 네이버 블로그 본문 영역(se-main-container)이 article/main 이 없어도 메뉴·검색보다 먼저 골라지는지
+func TestBrExtractKnownBodyContainer(t *testing.T) {
+	doc := `<html><head><title>글 - 네이버 블로그</title></head><body>
+<div class="blog-menu"><a href="/x">블로그 메뉴 바로가기</a><span>블로그 검색 창 안내</span></div>
+<div class="se-main-container"><div class="se-component"><p class="se-text-paragraph">안녕하세요, 본문 첫 문단입니다. 이 문단은 충분히 길어서 짧은 글 판정에 걸리지 않아야 함. 한글 글자를 더 넣어서 길이를 채움.</p>
+<p class="se-text-paragraph">둘째 문단도 본문에 들어가야 함. 다른 문장을 이어 붙여 길이를 충분히 확보함. 여기까지.</p></div></div>
+<div class="footer-widgets">이웃 추가 위젯</div></body></html>`
+	p := brParse(t, doc, "https://blog.naver.com/PostView.naver?blogId=abc&logNo=1")
+	txt := brText(p, 60)
+	brMustContain(t, "known", txt, "본문 첫 문단입니다", "둘째 문단도 본문에 들어가야 함")
+	brMustNotContain(t, "known", txt, "블로그 메뉴 바로가기", "블로그 검색 창 안내", "이웃 추가 위젯")
+}
