@@ -60,7 +60,7 @@ func blend(kind int, a, b *grid, u float64, reverse bool) *grid {
 					} else if k > 0.33 {
 						ch = '▓'
 					}
-					out = fxCell(ch, gradV([]vec{{60, 120, 255}, {97, 214, 214}, {255, 255, 255}}, k), gradV([]vec{{10, 20, 60}, {30, 70, 110}, {120, 200, 220}}, k))
+					out = fxCell(ch, gradV([]vec{{60, 120, 255}, {97, 214, 214}, {170, 215, 235}}, k), gradV([]vec{{10, 20, 60}, {30, 70, 110}, {70, 130, 160}}, k))
 				default:
 					out = pickA(x, y)
 				}
@@ -77,7 +77,7 @@ func blend(kind int, a, b *grid, u float64, reverse bool) *grid {
 					if k > 0.6 {
 						ch = '▓'
 					}
-					out = fxCell(ch, gradV([]vec{{97, 214, 214}, {255, 255, 255}}, k), gradV([]vec{{20, 60, 90}, {140, 220, 240}}, k))
+					out = fxCell(ch, gradV([]vec{{97, 214, 214}, {170, 215, 235}}, k), gradV([]vec{{20, 60, 90}, {80, 140, 170}}, k))
 				default:
 					out = pickA(x, y)
 				}
@@ -105,7 +105,7 @@ func blend(kind int, a, b *grid, u float64, reverse bool) *grid {
 					if p >= 0.5 {
 						under = pickB(x, y)
 					}
-					out = cell{r: ch, w: 1, st: style{fg: colSeq(false, gradV([]vec{{60, 120, 200}, {97, 214, 214}, {235, 250, 255}}, k)), bg: under.st.bg}}
+					out = cell{r: ch, w: 1, st: style{fg: colSeq(false, gradV([]vec{{60, 120, 200}, {97, 214, 214}, {170, 215, 235}}, k)), bg: under.st.bg}}
 				default:
 					out = pickA(x, y)
 				}
@@ -115,7 +115,7 @@ func blend(kind int, a, b *grid, u float64, reverse bool) *grid {
 					xa := x + off
 					switch {
 					case off > 0 && off < a.w && x == a.w-off:
-						out = fxCell('|', vec{200, 240, 255}, vec{30, 70, 110})
+						out = fxCell('|', vec{150, 200, 225}, vec{30, 70, 110})
 					case xa < a.w:
 						out = pickA(xa, y)
 					default:
@@ -125,7 +125,7 @@ func blend(kind int, a, b *grid, u float64, reverse bool) *grid {
 					xa := x - off
 					switch {
 					case off > 0 && off < a.w && x == off:
-						out = fxCell('|', vec{200, 240, 255}, vec{30, 70, 110})
+						out = fxCell('|', vec{150, 200, 225}, vec{30, 70, 110})
 					case xa >= 0:
 						out = pickA(xa, y)
 					default:

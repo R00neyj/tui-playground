@@ -1050,7 +1050,8 @@ func cellSeg(e tmEntry, selected bool, ry, w int) seg {
 	}
 	s := seg{t: padR(mark+body, w), fg: colorOnState, bg: e.col}
 	if selected {
-		s.bg, s.bold = colorText, true
+		// 선택은 흰 배경 대신 색을 뒤집음: 검은 바탕에 그 사각형의 색 글자 (큰 흰 면이 눈부시지 않게)
+		s.fg, s.bg, s.bold = e.col, colorOnState, true
 	}
 	return s
 }
