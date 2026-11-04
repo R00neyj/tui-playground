@@ -17,8 +17,11 @@ type Ctx struct {
 	Now  time.Time
 }
 
-// In 은 박스 안쪽 폭 (DESIGN.md box.width: 창 폭 − 6, 최소 50, 최대 72)
-func (c Ctx) In() int { return max(50, min(72, c.W-6)) }
+// In 은 박스 안쪽 폭 (DESIGN.md box.width: 창 폭 − 6, 최소 50, 최대 100)
+// maxIn 은 전체화면에서도 박스가 너무 퍼지지 않게 하는 안쪽 폭 상한
+const maxIn = 100
+
+func (c Ctx) In() int { return max(50, min(maxIn, c.W-6)) }
 
 // Big 은 큰 숫자를 쓸 수 있는지 (DESIGN.md breakpoint.big: 폭 ≥ 60 그리고 높이 ≥ 21)
 func (c Ctx) Big() bool { return c.In() >= 60 && c.H >= 21 }

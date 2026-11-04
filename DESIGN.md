@@ -62,7 +62,7 @@ Code uses these names, never raw values. 값은 ANSI 16색 번호이고 실제 �
 | --- | --- |
 | space.1 / 2 | 1칸 / 2칸 (박스 안쪽 왼쪽 여백 2칸, 오른쪽 여백 2칸) |
 | space.row | 섹션 사이에 빈 줄 1개 |
-| box.width | 안쪽 폭 = 창 폭 − 6, 최소 50 ~ 최대 72. 가운데 정렬 |
+| box.width | 안쪽 폭 = 창 폭 − 6, 최소 50 ~ 최대 100 (전체화면에서 넓게 씀). 가운데 정렬 |
 | border.style | 둥근: `╭ ╮ ╰ ╯`, 가로 `─`, 세로 `│`, 구분선 `├ ┤` |
 | progress.glyph | 채움 `━`(상태색), 빈 칸 `━`(color.text-faint), 끝에 ` NNN%` |
 | breakpoint.big | 폭 ≥ 60 그리고 높이 ≥ 21 이면 큰 숫자, 아니면 한 줄 숫자 |

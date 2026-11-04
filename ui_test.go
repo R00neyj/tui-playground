@@ -18,7 +18,7 @@ var fixedNow = time.Date(2026, 11, 5, 14, 32, 7, 0, time.Local)
 func testCtx(w, h int) Ctx { return Ctx{W: w, H: h, Now: fixedNow} }
 
 // 창 크기 후보: 넉넉한 창, 80x24, 큰 숫자 경계, 가장 작은 창
-var testSizes = [][2]int{{120, 40}, {80, 24}, {80, 21}, {60, 20}, {56, 17}}
+var testSizes = [][2]int{{200, 50}, {120, 40}, {80, 24}, {80, 21}, {60, 20}, {56, 17}}
 
 // assertFrame 은 앱이 그린 블록이 박스 모양을 지키는지 검사함:
 // 테두리 줄은 모두 같은 폭이고, │ 로 시작한 줄은 │ 로 끝남 (내용이 넘쳐서 오른쪽 테두리가 밀리면 실패)
