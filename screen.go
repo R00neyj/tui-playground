@@ -63,16 +63,16 @@ func (m model) fxApp(c Ctx) bool {
 }
 
 func (m model) homeGrid(c Ctx) *grid {
-	label := "B 종료"
+	label := "종료"
 	if m.ph == phSettings {
-		label = "B 뒤로"
+		label = "뒤로"
 	}
 	return m.composeGrid(c, m.boxView(c), m.arcadeFits(c), label)
 }
 
 func (m model) appGrid(c Ctx) *grid {
 	c2, arc := m.appCtx(c)
-	return m.composeGrid(c, m.app.View(c2), arc, "B 뒤로")
+	return m.composeGrid(c, m.app.View(c2), arc, "뒤로")
 }
 
 // composeGrid 는 배경 위에 박스를 가운데 놓고, arcade 면 박스 바로 아래에 조작부를 붙임

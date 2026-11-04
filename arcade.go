@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/charmbracelet/lipgloss"
 	"math"
 	"time"
 )
@@ -82,10 +83,11 @@ func arcadeGrid(w, n int, p pulses, now time.Time, bLabel string) *grid {
 	joystick(g, 9, 1, p, now)
 
 	// 큰 버튼 A, B
-	bigButton(g, 21, 2, 'A', arcRed, p.down(pA, now))
-	bigButton(g, 31, 2, 'B', arcBlue, p.down(pB, now))
-	g.text(20, 5, "A 실행", vst(arcLabel, arcPanel))
-	g.text(30, 5, bLabel, vst(arcLabel, arcPanel))
+	// 버튼 위의 글자는 실제로 누르는 키 이름임 (A/B 같은 없는 키를 쓰면 잘못 알려주게 됨)
+	bigButton(g, 21, 2, "Enter", arcRed, p.down(pA, now))
+	bigButton(g, 31, 2, "Esc", arcBlue, p.down(pB, now))
+	g.text(21+(7-lipgloss.Width("실행"))/2, 5, "실행", vst(arcLabel, arcPanel))
+	g.text(31+(7-lipgloss.Width(bLabel))/2, 5, bLabel, vst(arcLabel, arcPanel))
 
 	// 숫자 버튼 (앱 개수만큼)
 	step := 4
@@ -157,8 +159,8 @@ func joystick(g *grid, cx, top int, p pulses, now time.Time) {
 	g.text(ballX-2, ballY+1, "▝▀▀▀▘", vst(c.mul(0.7), arcPanel))
 }
 
-// bigButton: 폭 7, 높이 3 (눌리면 한 줄 내려가고 어두워짐)
-func bigButton(g *grid, x, top int, label rune, c vec, down bool) {
+// bigButton: 폭 7, 높이 3 (눌리면 한 줄 내려가고 어두워짐). label 은 이 버튼에 대응하는 실제 키 이름
+func bigButton(g *grid, x, top int, label string, c vec, down bool) {
 	y := top
 	col := c
 	if down {
@@ -173,7 +175,7 @@ func bigButton(g *grid, x, top int, label rune, c vec, down bool) {
 	if down {
 		fg = vec{30, 30, 30}
 	}
-	g.put(x+3, y+1, label, vst(fg, col))
+	g.text(x+(7-lipgloss.Width(label))/2, y+1, label, vst(fg, col))
 	if !down {
 		g.text(x, y+2, "▀▀▀▀▀▀▀", vst(col.mul(0.35), arcPanel))
 	}
