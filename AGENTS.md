@@ -23,6 +23,9 @@ go build -ldflags "-s -w" -o TUI-playground.exe .
 | `timer.go` | 예약·취소(`shutdown.exe` 호출), 상태 파일, 부팅 시각, 입력 파싱, 다른 창과 동기화(`sync`) |
 | `view.go` | 메인 화면, 새 타이머 입력 화면, 큰 숫자, 박스 그리기 |
 | `intro.go` | 인트로 애니메이션 (로고, 부제목 타이핑, 로딩 막대) |
+| `grid.go` `screen.go` | 화면을 칸 격자로 다루는 도구(색 입힌 문자열 ↔ 칸), 홈 합성(배경 + 박스 + 조작부) |
+| `bg.go` `transition.go` `arcade.go` | 홈 배경 5종, 화면 전환 4종, 아케이드 조작부 |
+| `settings.go` | 홈 설정(배경·전환·조작부) 저장과 설정 화면. 저장 위치는 사용자 설정 폴더의 `TUI-playground/settings.json` |
 | `main_test.go` | 파싱, 예약 로직, 화면 정렬, 동기화 테스트 |
 | `shutdown.bat` | 예전 PowerShell 버전. 더 이상 개발하지 않고 그대로 보관함 |
 
@@ -49,3 +52,4 @@ go build -ldflags "-s -w" -o TUI-playground.exe .
 - vibe-workflow 단계(`.workflow/`)가 끝날 때마다 커밋함. 그 외에는 사용자가 요청할 때만 커밋함. 기본 브랜치는 `main`
 - UI work: read DESIGN.md first; use only its tokens and components, and log new ones there.
 - 응답과 문서는 한국어로 작성함
+- 홈 배경·전환은 터미널이 색을 지원할 때만 켜짐(`TUI_ANIM=off` 로 끌 수 있음). 테스트는 `forceProfile` 로 색 모드를 바꿔 끼우고, `TestMain` 이 설정 파일 경로를 임시 폴더로 돌려놓음

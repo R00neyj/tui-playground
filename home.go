@@ -50,7 +50,7 @@ func (m model) viewHome(c Ctx) string {
 	if n < 9 {
 		pick = fmt.Sprintf("1-%d", max(n, 1))
 	}
-	f.MenuInline([2]string{"↑↓", "선택"}, [2]string{pick, "바로 열기"}, [2]string{"Enter", "실행"}, [2]string{"Esc", "종료"})
+	f.MenuInline([2]string{"↑↓", "선택"}, [2]string{pick, "바로 열기"}, [2]string{"Enter", "실행"}, [2]string{"s", "설정"}, [2]string{"Esc", "종료"})
 	f.Rule().Message(hint, ToneInfo)
 	return f.String()
 }
