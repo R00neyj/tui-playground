@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>인트로 (intro)</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="wf-top">
+  <a href="index.html">← 화면 목록</a>
+  <h1>인트로 <small>intro</small></h1>
+  <p class="wf-note">미드파이 · 회색 · 실제 문구 · <a href="../../DESIGN.md">DESIGN.md</a> 컴포넌트. 관련 기능: <a href="../02-spec.md#f-01">F-01</a>. 화면 크기 80×24 기준, 단위는 칸.</p>
+</header>
+
+<div class="wf-states">
+  <div id="logo">
+    <p class="wf-state-label">1. 로고가 왼쪽에서 오른쪽으로 나타남 → 부제목 타이핑</p>
+    <div class="term "><div class="center">
+<pre class="logo">████████╗██╗   ██╗██╗
+╚══██╔══╝██║   ██║██║
+   ██║   ██║   ██║██║
+   ██║   ██║   ██║██║
+   ██║   ╚██████╔╝██║
+   ╚═╝    ╚═════╝ ╚═╝</pre>
+<span class="dim">터 미 널   플 레 이 그 라 운 드</span>
+<span> </span><span> </span>
+</div></div>
+    <p class="flow">파랑→cyan→흰색 그라데이션은 DESIGN.md 의 예외. 색은 프로토타입에서 적용</p>
+  </div>
+  <div id="loading">
+    <p class="wf-state-label">2. 로딩 막대 (62%)</p>
+    <div class="term "><div class="center">
+<pre class="logo">████████╗██╗   ██╗██╗
+╚══██╔══╝██║   ██║██║
+   ██║   ██║   ██║██║
+   ██║   ██║   ██║██║
+   ██║   ╚██████╔╝██║
+   ╚═╝    ╚═════╝ ╚═╝</pre>
+<span class="dim">터 미 널   플 레 이 그 라 운 드</span>
+<span class="loadbar">█████████████████████████<span class="faint">░░░░░░░░░░░░░░░</span>  62%</span>
+<span class="dim">예약 상태 확인</span>
+</div></div>
+  </div>
+  <div id="ready">
+    <p class="wf-state-label">3. 준비 완료 → 잠시 뒤 <a href="home.html">home</a></p>
+    <div class="term "><div class="center">
+<pre class="logo">████████╗██╗   ██╗██╗
+╚══██╔══╝██║   ██║██║
+   ██║   ██║   ██║██║
+   ██║   ██║   ██║██║
+   ██║   ╚██████╔╝██║
+   ╚═╝    ╚═════╝ ╚═╝</pre>
+<span class="dim">터 미 널   플 레 이 그 라 운 드</span>
+<span class="loadbar">████████████████████████████████████████<span class="faint"></span> 100%</span>
+<span class="k">준비 완료</span>
+</div></div>
+    <p class="flow">전체 약 2.3초. 아무 키나 누르면 건너뛰고 <a href="home.html">home</a> 으로 감</p>
+  </div>
+</div>
+
+<aside class="wf-annot">
+  <h2>이 화면에서 사용자가 하는 일</h2>
+  <ol><li>프로그램을 시작하면 한 번만 보임. 로고 → 부제목 → 로딩 막대 → 준비 완료 순서임</li><li>아무 키나 누르면 건너뛰고 <a href="home.html">홈 메뉴</a>로 감</li><li>마지막 단계에서 저장된 종료 예약이 있는지 확인함 (재부팅 전 예약이면 버림)</li></ol>
+</aside>
+</body>
+</html>

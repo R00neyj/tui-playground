@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>홈 메뉴 (home)</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="wf-top">
+  <a href="index.html">← 화면 목록</a>
+  <h1>홈 메뉴 <small>home</small></h1>
+  <p class="wf-note">미드파이 · 회색 · 실제 문구 · <a href="../../DESIGN.md">DESIGN.md</a> 컴포넌트. 관련 기능: <a href="../02-spec.md#f-01">F-01</a>, <a href="../02-spec.md#f-03">F-03</a>. 화면 크기 80×24 기준, 단위는 칸.</p>
+</header>
+
+<div class="wf-states">
+  <div id="active">
+    <p class="wf-state-label">종료 타이머 예약 중</p>
+    <div class="term "><div class="tbox"><div class="tr between"><b>터미널 플레이그라운드</b><span class="dim">2026-11-05 14:32:07</span></div><div class="thr"></div><div class="tr "></div><div class="tr flex"><span class="sel">▸</span>&nbsp;<span class="dim">[</span><span class="k">1</span><span class="dim">]</span>&nbsp;<span class="sel"><a href="timer-main.html#active">종료 타이머</a></span><span style="margin-left:auto"><span class="badge-on"> 예약됨 </span> 00:37:53</span></div><div class="tr ">      <span class="dim">지정한 시간 뒤 PC 종료를 예약함</span></div><div class="tr "></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="dim">[</span><span class="k">2</span><span class="dim">]</span>&nbsp;<span class=""><a href="pomo-main.html#idle">포모도로</a></span></div><div class="tr ">      <span class="dim">집중 25분 · 휴식 5분을 번갈아 카운트다운함</span></div><div class="tr "></div><div class="thr"></div><div class="tr "><span class="dim">[</span><span class="k">↑↓</span><span class="dim">]</span> 선택    <span class="dim">[</span><span class="k">Enter</span><span class="dim">]</span> 실행    <span class="dim">[</span><span class="k">Esc</span><span class="dim">]</span> 종료</div><div class="thr"></div><div class="tr "><span class="dim">종료 타이머 예약은 홈으로 나와도 유지됨</span></div></div></div>
+    <p class="flow">앱 이름 → 해당 앱 화면. 종료 타이머 줄은 <a href="timer-main.html#active">timer-main</a>, 포모도로 줄은 <a href="pomo-main.html#idle">pomo-main</a></p>
+  </div>
+  <div id="idle">
+    <p class="wf-state-label">예약 없음 (포모도로 줄 선택됨)</p>
+    <div class="term "><div class="tbox"><div class="tr between"><b>터미널 플레이그라운드</b><span class="dim">2026-11-05 14:32:07</span></div><div class="thr"></div><div class="tr "></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="dim">[</span><span class="k">1</span><span class="dim">]</span>&nbsp;<span class=""><a href="timer-main.html#idle">종료 타이머</a></span><span style="margin-left:auto"><span class="dim">예약 없음</span></span></div><div class="tr ">      <span class="dim">지정한 시간 뒤 PC 종료를 예약함</span></div><div class="tr "></div><div class="tr flex"><span class="sel">▸</span>&nbsp;<span class="dim">[</span><span class="k">2</span><span class="dim">]</span>&nbsp;<span class="sel"><a href="pomo-main.html#idle">포모도로</a></span></div><div class="tr ">      <span class="dim">집중 25분 · 휴식 5분을 번갈아 카운트다운함</span></div><div class="tr "></div><div class="thr"></div><div class="tr "><span class="dim">[</span><span class="k">↑↓</span><span class="dim">]</span> 선택    <span class="dim">[</span><span class="k">Enter</span><span class="dim">]</span> 실행    <span class="dim">[</span><span class="k">Esc</span><span class="dim">]</span> 종료</div><div class="thr"></div><div class="tr "></div></div></div>
+    <p class="flow">예약이 없으면 상태 배지 대신 "예약 없음"만 표시함</p>
+  </div>
+  <div id="empty">
+    <p class="wf-state-label">등록된 앱 없음</p>
+    <div class="term short"><div class="tbox"><div class="tr between"><b>터미널 플레이그라운드</b><span class="dim">2026-11-05 14:32:07</span></div><div class="thr"></div><div class="tr "></div><div class="tr "><span class="dim">등록된 앱 없음</span></div><div class="tr "><span class="dim">앱 파일을 추가하고 등록 목록에 한 줄을 넣으면 여기에 나타남</span></div><div class="tr "></div><div class="thr"></div><div class="tr "><span class="dim">[</span><span class="k">↑↓</span><span class="dim">]</span> 선택    <span class="dim">[</span><span class="k">Enter</span><span class="dim">]</span> 실행    <span class="dim">[</span><span class="k">Esc</span><span class="dim">]</span> 종료</div><div class="thr"></div><div class="tr "></div></div></div>
+  </div>
+</div>
+
+<aside class="wf-annot">
+  <h2>이 화면에서 사용자가 하는 일</h2>
+  <ol><li>↑/↓ 또는 숫자키로 앱을 고르고 Enter 로 실행함 → <a href="timer-main.html">종료 타이머</a> · <a href="pomo-main.html">포모도로</a></li><li>종료 타이머 예약이 있으면 줄 끝에 상태 배지와 남은 시간이 보임 (색: DESIGN.md color.ok/warn/danger)</li><li>Esc 또는 q 를 누르면 프로그램이 종료됨</li></ol>
+</aside>
+</body>
+</html>

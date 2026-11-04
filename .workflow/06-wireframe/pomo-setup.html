@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>포모도로 설정 (pomo-setup)</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="wf-top">
+  <a href="index.html">← 화면 목록</a>
+  <h1>포모도로 설정 <small>pomo-setup</small></h1>
+  <p class="wf-note">미드파이 · 회색 · 실제 문구 · <a href="../../DESIGN.md">DESIGN.md</a> 컴포넌트. 관련 기능: <a href="../02-spec.md#f-04">F-04</a>. 화면 크기 80×24 기준, 단위는 칸.</p>
+</header>
+
+<div class="wf-states">
+  <div id="default">
+    <p class="wf-state-label">기본 (집중 입력 중)</p>
+    <div class="term short"><div class="tbox"><div class="tr "><b>포모도로 설정</b></div><div class="thr"></div><div class="tr "><span class="dim">집중과 휴식 시간을 분 단위로 입력함</span></div><div class="tr "><span class="dim">현재 값</span>  집중 25분  <span class="dim">/</span>  휴식 5분</div><div class="tr "></div><div class="tr "><span class="dim">입력 예</span>  25  <span class="dim">/</span>  50  <span class="dim">/</span>  5</div><div class="tr "><a href="pomo-main.html#idle">Enter</a> <span class="dim">= 저장</span>    <a href="pomo-main.html#idle">Esc</a> <span class="dim">= 취소</span></div></div>
+<div class="prompt-line"><span>집중(분)  &gt; </span>25<span class="caret"> </span></div>
+<div class="prompt-line" style="margin-top:0"><span>휴식(분)  &gt; </span>5</div></div>
+    <p class="flow">Enter → 저장하고 <a href="pomo-main.html#idle">pomo-main</a> · Esc → 취소</p>
+  </div>
+  <div id="invalid">
+    <p class="wf-state-label">잘못된 값 (0 입력)</p>
+    <div class="term short"><div class="tbox"><div class="tr "><b>포모도로 설정</b></div><div class="thr"></div><div class="tr "><span class="dim">집중과 휴식 시간을 분 단위로 입력함</span></div><div class="tr "><span class="dim">현재 값</span>  집중 25분  <span class="dim">/</span>  휴식 5분</div><div class="tr "></div><div class="tr "><span class="dim">입력 예</span>  25  <span class="dim">/</span>  50  <span class="dim">/</span>  5</div><div class="tr "><a href="pomo-main.html#idle">Enter</a> <span class="dim">= 저장</span>    <a href="pomo-main.html#idle">Esc</a> <span class="dim">= 취소</span></div></div>
+<div class="prompt-line"><span>집중(분)  &gt; </span>0<span class="caret"> </span></div>
+<div class="prompt-line" style="margin-top:0"><span>휴식(분)  &gt; </span>5</div>
+<div class="prompt-line"><span class="msg-err">1 이상의 숫자만 입력할 수 있음.</span></div></div>
+    <p class="flow">0 이하 또는 숫자가 아닌 값은 거부하고 같은 화면에 남음</p>
+  </div>
+</div>
+
+<aside class="wf-annot">
+  <h2>이 화면에서 사용자가 하는 일</h2>
+  <ol><li>집중 분과 휴식 분을 차례로 입력하고 Enter 로 저장함 (기본 25/5)</li><li>잘못된 값이면 오류 문구가 뜨고 같은 화면에서 다시 입력함</li><li>Esc 를 누르면 저장하지 않고 <a href="pomo-main.html">포모도로</a>로 돌아감</li></ol>
+</aside>
+</body>
+</html>

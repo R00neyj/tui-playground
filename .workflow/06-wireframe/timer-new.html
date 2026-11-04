@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>종료 타이머 새 예약 (timer-new)</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="wf-top">
+  <a href="index.html">← 화면 목록</a>
+  <h1>종료 타이머 새 예약 <small>timer-new</small></h1>
+  <p class="wf-note">미드파이 · 회색 · 실제 문구 · <a href="../../DESIGN.md">DESIGN.md</a> 컴포넌트. 관련 기능: <a href="../02-spec.md#f-02">F-02</a>. 화면 크기 80×24 기준, 단위는 칸.</p>
+</header>
+
+<div class="wf-states">
+  <div id="default">
+    <p class="wf-state-label">기본 (현재 예약 없음)</p>
+    <div class="term short"><div class="tbox"><div class="tr "><b>새 타이머</b></div><div class="thr"></div><div class="tr "><span class="dim">현재 예약된 타이머 없음</span></div><div class="tr "></div><div class="tr "><span class="dim">입력 예</span>  30  <span class="dim">/</span>  90  <span class="dim">/</span>  1h30m  <span class="dim">/</span>  2h</div><div class="tr "><a href="timer-main.html#active">Enter</a> <span class="dim">= 30분</span>    <a href="timer-main.html">0 / Esc</a> <span class="dim">= 뒤로</span></div></div>
+<div class="prompt-line"><span style="color:var(--ink)">분  &gt; </span><span class="caret"> </span></div></div>
+    <p class="flow">Enter → 예약하고 <a href="timer-main.html#active">timer-main</a> · 0/Esc → <a href="timer-main.html#idle">timer-main</a></p>
+  </div>
+  <div id="with-current">
+    <p class="wf-state-label">현재 예약이 있을 때 (90 입력 중)</p>
+    <div class="term short"><div class="tbox"><div class="tr "><b>새 타이머</b></div><div class="thr"></div><div class="tr "><span class="dim">현재 예약</span>  <span>15:10:00  (남은 00:37:53)</span></div><div class="tr "><span class="dim">새로 설정하면 기존 타이머는 자동 취소됨</span></div><div class="tr "></div><div class="tr "><span class="dim">입력 예</span>  30  <span class="dim">/</span>  90  <span class="dim">/</span>  1h30m  <span class="dim">/</span>  2h</div><div class="tr "><a href="timer-main.html#active">Enter</a> <span class="dim">= 30분</span>    <a href="timer-main.html">0 / Esc</a> <span class="dim">= 뒤로</span></div></div>
+<div class="prompt-line"><span style="color:var(--ink)">분  &gt; </span>90<span class="caret"> </span></div></div>
+    <p class="flow">새로 설정하면 기존 예약은 자동 취소됨</p>
+  </div>
+  <div id="invalid">
+    <p class="wf-state-label">잘못된 입력</p>
+    <div class="term short"><div class="tbox"><div class="tr "><b>새 타이머</b></div><div class="thr"></div><div class="tr "><span class="dim">현재 예약된 타이머 없음</span></div><div class="tr "></div><div class="tr "><span class="dim">입력 예</span>  30  <span class="dim">/</span>  90  <span class="dim">/</span>  1h30m  <span class="dim">/</span>  2h</div><div class="tr "><a href="timer-main.html#active">Enter</a> <span class="dim">= 30분</span>    <a href="timer-main.html">0 / Esc</a> <span class="dim">= 뒤로</span></div></div>
+<div class="prompt-line"><span style="color:var(--ink)">분  &gt; </span><span class="caret"> </span></div>
+<div class="prompt-line"><span class="msg-err">잘못된 입력.</span></div></div>
+    <p class="flow">같은 화면에 남고 오류만 표시함 (color.danger)</p>
+  </div>
+</div>
+
+<aside class="wf-annot">
+  <h2>이 화면에서 사용자가 하는 일</h2>
+  <ol><li>30, 90, 1h30m, 2h 같은 형식으로 시간을 입력하고 Enter 를 누름 (빈 입력은 30분)</li><li>잘못된 입력이면 같은 화면에서 다시 입력함</li><li>0 또는 Esc 를 누르면 <a href="timer-main.html">종료 타이머</a>로 돌아감</li></ol>
+</aside>
+</body>
+</html>

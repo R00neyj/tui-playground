@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>포모도로 나가기 확인 (pomo-leave)</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="wf-top">
+  <a href="index.html">← 화면 목록</a>
+  <h1>포모도로 나가기 확인 <small>pomo-leave</small></h1>
+  <p class="wf-note">미드파이 · 회색 · 실제 문구 · <a href="../../DESIGN.md">DESIGN.md</a> 컴포넌트. 관련 기능: <a href="../02-spec.md#f-04">F-04</a>. 화면 크기 80×24 기준, 단위는 칸.</p>
+</header>
+
+<div class="wf-states">
+  <div id="default">
+    <p class="wf-state-label">진행 중에 Esc 를 눌렀을 때 (하단 메시지 줄이 확인 문구로 바뀜)</p>
+    <div class="term "><div class="tbox"><div class="tr between"><b>터미널 플레이그라운드</b><span class="dim">2026-11-05 14:41:07</span></div><div class="thr"></div><div class="tr "></div><div class="tr "><span class="badge-on"> 집중 </span>   <span class="dim">오늘 완료  1회</span></div><div class="tr "></div><div class="tr digits-row"><div class="dg"><div class="r"><i class="s"></i><i class="p"></i><i class="s"></i><i class="s"></i><i class="p"></i><i class="p"></i><i class="p"></i><i class="s"></i><i class="s"></i><i class="s"></i><i class="p"></i><i class="p"></i><i class="p"></i><i class="s"></i><i class="p"></i><i class="p"></i><i class="p"></i></div><div class="r"><i class="p"></i><i class="p"></i><i class="s"></i><i class="s"></i><i class="p"></i><i class="s"></i><i class="s"></i><i class="s"></i><i class="p"></i><i class="s"></i><i class="p"></i><i class="s"></i><i class="s"></i><i class="s"></i><i class="p"></i><i class="s"></i><i class="s"></i></div><div class="r"><i class="s"></i><i class="p"></i><i class="s"></i><i class="s"></i><i class="p"></i><i class="p"></i><i class="p"></i><i class="s"></i><i class="s"></i><i class="s"></i><i class="p"></i><i class="p"></i><i class="p"></i><i class="s"></i><i class="p"></i><i class="p"></i><i class="p"></i></div><div class="r"><i class="s"></i><i class="p"></i><i class="s"></i><i class="s"></i><i class="s"></i><i class="s"></i><i class="p"></i><i class="s"></i><i class="p"></i><i class="s"></i><i class="s"></i><i class="s"></i><i class="p"></i><i class="s"></i><i class="s"></i><i class="s"></i><i class="p"></i></div><div class="r"><i class="p"></i><i class="p"></i><i class="p"></i><i class="s"></i><i class="p"></i><i class="p"></i><i class="p"></i><i class="s"></i><i class="s"></i><i class="s"></i><i class="p"></i><i class="p"></i><i class="p"></i><i class="s"></i><i class="p"></i><i class="p"></i><i class="p"></i></div></div></div><div class="tr "></div><div class="tr pbar"><div class="track"><i style="width:36%"></i></div><span class="pct">36%</span></div><div class="thr"></div><div class="tr "><span class="dim">[</span><span class="k">Space</span><span class="dim">]</span>  <span class="">일시정지</span></div><div class="tr "><span class="dim">[</span><span class="k">r</span><span class="dim">]</span>  <span class="">리셋</span></div><div class="tr "><span class="dim">[</span><span class="k">e</span><span class="dim">]</span>  <span class="">설정</span>   <span class="dim">집중 25분 · 휴식 5분</span></div><div class="tr "><span class="dim">[</span><span class="k">Esc</span><span class="dim">]</span>  <span class="">홈으로</span>   <span class="dim">진행 중이면 확인함</span></div><div class="thr"></div><div class="tr "><span class="msg-err">진행 중인 타이머가 멈춥니다. 홈으로 나갈까요?</span>   <span class="dim">[</span><span class="k">y</span><span class="dim">]</span> <a href="home.html">나감</a>   <span class="dim">[</span><span class="k">n</span><span class="dim">]</span> <a href="pomo-main.html#running">계속</a></div></div></div>
+    <p class="flow">y → <a href="home.html">home</a> (타이머 중단) · n → <a href="pomo-main.html#running">pomo-main</a></p>
+  </div>
+</div>
+
+<aside class="wf-annot">
+  <h2>이 화면에서 사용자가 하는 일</h2>
+  <ol><li>실수로 Esc 를 눌러 진행 중인 타이머를 잃지 않도록 한 번 더 물어봄</li><li>y 를 누르면 타이머를 멈추고 <a href="home.html">홈</a>으로, n 을 누르면 <a href="pomo-main.html#running">포모도로</a>로 돌아감</li><li>대기 중(진행 중이 아님)에는 이 확인 없이 바로 홈으로 나감</li></ol>
+</aside>
+</body>
+</html>

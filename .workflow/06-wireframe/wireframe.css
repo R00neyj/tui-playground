@@ -1,0 +1,105 @@
+/* Mid-fi wireframe kit. Grayscale only; set the :root values from DESIGN.md (type scale, spacing, radius, frame width). */
+:root {
+  --frame: 390px;
+  /* TUI: 글꼴은 사용자 터미널의 고정폭 글꼴. 와이어프레임에서는 비슷한 글꼴로 흉내 냄 (DESIGN.md Typography) */
+  --font: "Cascadia Mono", "D2Coding", Consolas, "Malgun Gothic", monospace;
+  --text-title: 14px; --text-heading: 14px; --text-body: 14px; --text-caption: 14px;
+  --space-1: 1ch; --space-2: 2ch; --space-3: 2ch; --space-4: 2ch; --space-5: 3ch; --space-6: 4ch;
+  --radius: 8px;
+  --ink: #1f1f1f; --ink-2: #5c5c5c; --ink-3: #9a9a9a;
+  --line: #d6d6d6; --fill: #ececec; --fill-2: #f6f6f6; --paper: #fff; --strong: #3a3a3a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: var(--text-body)/1.5 var(--font); color: var(--ink); background: #e4e4e4; }
+a { color: inherit; }
+
+/* review chrome, not part of the screen */
+.wf-top { padding: 16px 24px; background: #fafafa; border-bottom: 1px solid var(--line); }
+.wf-top h1 { margin: 8px 0 4px; font-size: 18px; }
+.wf-top small { color: var(--ink-3); font-weight: normal; }
+.wf-note { margin: 0; color: var(--ink-2); font-size: 12px; }
+.wf-screens { padding: 24px 48px; }
+.wf-screens span { color: var(--ink-3); font-size: 12px; margin-left: 8px; }
+.wf-annot { max-width: var(--frame); margin: 0 auto 32px; font-size: 12px; color: var(--ink-2); }
+.wf-annot h2 { font-size: 13px; }
+.wf-states { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; padding: 24px; }
+.wf-state-label { font-size: 12px; color: var(--ink-2); margin: 0 0 6px; text-align: center; }
+
+/* the screen */
+.screen { width: var(--frame); min-height: 720px; margin: 0 auto; background: var(--paper); border: 1px solid #bdbdbd; display: flex; flex-direction: column; }
+.screen.desktop { --frame: 1280px; min-height: 800px; }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
+.bar .title { font-size: var(--text-heading); font-weight: 600; }
+.tabbar { margin-top: auto; display: flex; justify-content: space-around; padding: var(--space-3); border-top: 1px solid var(--line); font-size: var(--text-caption); color: var(--ink-2); }
+.body { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
+.row { display: flex; gap: var(--space-3); align-items: center; }
+.grow { flex: 1; }
+.stack { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.t-title { font-size: var(--text-title); margin: 0; line-height: 1.25; }
+.t-heading { font-size: var(--text-heading); margin: 0; }
+.t-body { font-size: var(--text-body); margin: 0; }
+.t-caption { font-size: var(--text-caption); color: var(--ink-2); margin: 0; }
+.t-muted { color: var(--ink-2); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 var(--space-4); border-radius: var(--radius); font: inherit; font-weight: 600; text-decoration: none; border: 1px solid var(--strong); background: var(--paper); color: var(--ink); }
+.btn.primary { background: var(--strong); color: #fff; }
+.btn.ghost { border-color: transparent; text-decoration: underline; }
+.btn.block { width: 100%; }
+.btn[aria-disabled="true"] { opacity: .4; }
+
+.field { display: flex; flex-direction: column; gap: var(--space-1); }
+.field label { font-size: var(--text-caption); font-weight: 600; }
+.input { min-height: 44px; padding: var(--space-2) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink-3); background: var(--paper); }
+.field.error .input { border: 2px solid var(--ink); }
+.hint { font-size: var(--text-caption); color: var(--ink-2); }
+
+.card { border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.list { list-style: none; margin: 0; padding: 0; }
+.list li { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--line); }
+.img { background: var(--fill); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; color: var(--ink-3); font-size: var(--text-caption); min-height: 120px; }
+.icon { width: 24px; height: 24px; border-radius: 4px; background: var(--fill); flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: var(--ink-3); }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--fill); flex: none; }
+.badge { font-size: var(--text-caption); padding: 2px var(--space-2); border: 1px solid var(--line); border-radius: 999px; }
+.empty { text-align: center; padding: var(--space-6) var(--space-4); color: var(--ink-2); display: flex; flex-direction: column; gap: var(--space-3); align-items: center; }
+.skeleton { background: var(--fill-2); border-radius: var(--radius); height: 16px; }
+
+/* ---- TUI kit (DESIGN.md: Frame, Header, Badge, Big digits, Progress bar, Menu row, List item, Input, Message line, Confirm) ----
+   단위는 칸(ch). 상태색은 아직 쓰지 않고 회색 농도로만 구분함 (집중/예약됨=진한 채움, 대기/일시정지=옅은 채움, 휴식=테두리). */
+.wf-states { align-items: flex-start; }
+.term { font: 14px/1.45 var(--font); width: 80ch; background: var(--paper); border: 1px solid #bdbdbd; padding: 1.45em 0; }
+.term.narrow { width: 56ch; }
+.term.short { padding: .7em 0; }
+.tbox { width: 74ch; margin: 0 auto; border: 1px solid var(--strong); border-radius: 12px; overflow: hidden; }
+.term.narrow .tbox { width: 52ch; }
+.tr { padding: 0 2ch; min-height: 1.45em; display: block; white-space: pre; }
+.tr.between, .tr.flex, .tr.pbar, .tr.digits-row { display: flex; align-items: center; }
+.tr.between { justify-content: space-between; }
+.thr { border-top: 1px solid var(--strong); }
+.tr b { font-weight: 700; }
+.dim { color: var(--ink-2); }
+.faint { color: var(--ink-3); }
+.sel { font-weight: 700; }
+.k { color: var(--ink); font-weight: 700; }
+.badge-on, .badge-soft, .badge-line { padding: 0 1ch; white-space: pre; }
+.badge-on { background: var(--strong); color: #fff; }
+.badge-soft { background: #cfcfcf; color: var(--ink); }
+.badge-line { border: 1px solid var(--strong); }
+.dg { margin: 0 auto; }
+.dg .r { display: flex; height: 1.45em; }
+.dg i { display: block; width: 2ch; height: 100%; }
+.dg i.p { background: var(--strong); }
+.digits-row { justify-content: center; padding: .5em 2ch; }
+.pbar { gap: 2ch; }
+.pbar .track { flex: 1; height: 3px; background: var(--fill); position: relative; }
+.pbar .track i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--strong); }
+.pbar .pct { width: 4ch; text-align: right; }
+.prompt-line { width: 74ch; margin: .7em auto 0; padding-left: 4ch; white-space: pre; }
+.term.narrow .prompt-line { width: 52ch; }
+.prompt-line .caret { background: var(--strong); color: #fff; }
+.msg-err { font-weight: 700; text-decoration: underline; }
+.logo { margin: 0 auto; font: 14px/1.1 var(--font); white-space: pre; }
+.center { display: flex; flex-direction: column; align-items: center; gap: .6em; padding: 2.4em 0 1.8em; white-space: pre; }
+.loadbar { white-space: pre; }
+.flow { font: 12px/1.4 system-ui, sans-serif; color: var(--ink-2); text-align: center; margin: 6px 0 0; }
+.wf-states a { text-decoration: underline; text-underline-offset: 2px; }
