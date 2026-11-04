@@ -49,6 +49,7 @@ Add one line each time a stage ends or the direction changes. Link the supportin
 | 2026-11-05 | - | 작업 규칙: 각 단계가 끝나면 커밋함. 기본 브랜치는 main | - |
 | 2026-11-05 | 5 | 디자인 시스템 확정: 현재 화면 유지(강조 cyan, 둥근 박스, 넓은 여백). 대비 4.5 미달인 힌트 글자·`대기` 배지는 9단계에서 수정 | [DESIGN.md](../DESIGN.md) |
 | 2026-11-05 | 6 | 화면 7개를 80×24 터미널 기준 와이어프레임으로 작성(상태별 변형 포함, 링크로 흐름 확인). 사용자 확인 완료 | [와이어프레임](06-wireframe/index.html) |
+| 2026-11-05 | 2·3·6 | Feature-add cycle: F-07 시스템 모니터, F-08 Claude 사용량, F-09 Codex 사용량, F-10 스톱워치, F-11 할 일 추가. 기능 11개가 되어 명세를 02-spec/F-xx.md 로 분리, 화면 12개, 홈은 한 줄형 목록. DESIGN.md 에 컴포넌트 7개 추가 | [기능 명세](02-spec.md), [UX 플로차트](03-flow.md), [와이어프레임](06-wireframe/index.html), [DESIGN.md](../DESIGN.md) |
 
 ## Open questions
 

@@ -23,7 +23,7 @@ status: done
 - 색마다 역할이 하나: 강조(조작·제목) / 상태(PC 종료까지 남은 시간) / 회색(보조)
 - 상태는 색에만 의존하지 않고 글자(배지)로도 표시함
 - 박스는 한 겹만 쓰고, 도움말 키는 항상 하단 한 곳에 모음
-- 빨강은 "PC가 곧 꺼짐"에만 씀. 포모도로에는 쓰지 않음
+- 빨강은 오류와 "PC가 곧 꺼짐"에만 씀. 모니터의 높은 사용률은 노랑(warn)까지만 쓰고 포모도로에는 쓰지 않음
 
 ## Tokens
 
@@ -79,10 +79,17 @@ Code uses these names, never raw values. 값은 ANSI 16색 번호이고 실제 �
 | Big digits | 남은 시간 | 큰 숫자, 한 줄 | 시간 단계별 색 | text.digits, 상태색 | timer-main, pomo-main |
 | Progress bar | 경과 비율 | - | 0~100% | progress.glyph, 상태색 | timer-main, pomo-main |
 | Menu row | `[키] 이름  힌트` 한 줄 | 활성, 비활성 | 비활성이면 이름이 color.text-muted | color.accent(키), text.body, text.caption | timer-main, pomo-main |
-| List item | 홈의 앱 한 줄 (이름, 설명, 상태 접미) | 선택, 일반 | 선택 시 `▸` 표시와 color.accent 이름. 종료 타이머 예약 중이면 접미에 상태색으로 남은 시간 | color.accent, text.body, text.caption | home |
+| List item | 홈의 앱 한 줄 `[번호] 이름  한 줄 설명  상태 접미` (번호는 1~9 까지만) | 선택, 일반 | 선택 시 `▸` 표시와 color.accent 이름, 설명은 color.text-muted. 종료 타이머 예약 중이면 접미에 상태색으로 남은 시간 | color.accent, text.body, text.caption | home |
 | Input | 한 줄 입력 | - | 기본 / 오류(아래 줄에 color.danger 문구) | color.accent(프롬프트), color.danger | timer-new, pomo-setup |
 | Message line | 하단 한 줄 안내 | 정보, 성공, 경고, 오류 | 비어 있으면 빈 줄 | color.text-muted, ok, warn, danger | home, timer-main, pomo-main |
 | Confirm | 되돌릴 수 없는 동작 확인 | - | `y` / `n` | color.warn(문구), color.accent(키) | pomo-leave |
+| Meter | 사용률 한 줄 (라벨, 막대, %, 값) | CPU / 메모리 / 디스크 | 70% 미만 color.accent, 70% 이상 color.warn, 읽기 실패는 `-` (color.text-muted) | progress.glyph, color.accent, color.warn | sysmon |
+| Sparkline | 최근 추이 한 줄 | 60칸 | 일시정지 중에는 고정 | `▁▂▃▄▅▆▇█`, color.accent | sysmon |
+| Tab row | 기간 선택 | 선택, 일반 | 선택은 `[ 이름 ]` 굵게 + color.accent, 나머지는 color.text-muted | color.accent, text.caption | claude-usage, codex-usage |
+| Table | 숫자 표 (헤더, 행, 합계 행) | 기간별, 모델별 | 숫자는 오른쪽 정렬·천 단위 쉼표, 비면 안내 문구 | text.body, text.caption | claude-usage, codex-usage |
+| Bar row | 일별 막대 한 줄 (날짜, `█` 막대, 값) | - | 오늘은 color.accent, 나머지는 color.text-muted | color.accent | claude-usage, codex-usage |
+| Check row | 할 일 한 줄 `[ ]` / `[x]` | 선택, 일반, 완료 | 완료는 color.text-muted + 끝에 `완료` 글자 (취소선은 터미널마다 달라 쓰지 않음) | color.accent, color.text-muted | todo |
+| Lap row | 랩 번호, 구간, 누적 시간 | 최근 3개 | - | text.body | stopwatch |
 | Intro | 시작 화면 | - | 로고 → 부제목 → 로딩 막대 → 준비 완료 | color.accent, color.ok, color.text-faint | intro |
 
 ## Patterns
@@ -95,6 +102,7 @@ Code uses these names, never raw values. 값은 ANSI 16색 번호이고 실제 �
 
 - 글자에 color.text-faint(8) 쓰기: 대비가 4.3 이라 4.5 에 못 미침. 현재 코드의 일부 힌트 문구가 이 색을 쓰고 있어 9단계에서 text-muted 로 바꿈
 - `대기` 배지를 흰 글자 + 회색(8) 배경으로 쓰기: 대비 4.1. 회색(7) 배경 + 검정 글자로 바꿈
+- `▁▂▃…█`, `━`, `▸` 는 일부 한글 글꼴 설정에서 2칸으로 그려질 수 있는 문자(모호폭)임 → 9단계에서 실제 터미널로 확인하고, 어긋나면 ASCII 대체 문자를 씀
 - 이모지, 장식용 아이콘, 상태를 색으로만 구분하기
 - 박스 안에 박스를 중첩하기, 장식용 선
 - 빨강을 포모도로 같은 "PC 종료와 무관한" 상태에 쓰기
@@ -113,3 +121,4 @@ Code uses these names, never raw values. 값은 ANSI 16색 번호이고 실제 �
 | Date | Change | Why |
 | --- | --- | --- |
 | 2026-11-05 | created | 현재 코드의 색·박스·여백 값을 토큰으로 정리하고 홈 목록·확인 문구 컴포넌트를 추가 |
+| 2026-11-05 | Meter, Sparkline, Tab row, Table, Bar row, Check row, Lap row 추가, List item 을 한 줄형으로 변경, 빨강 사용 원칙 문구 정정 | 앱 5개(F-07~F-11) 추가로 필요해짐. 기존 원칙이 오류에도 빨강을 쓰는 것과 어긋나 있었음 |

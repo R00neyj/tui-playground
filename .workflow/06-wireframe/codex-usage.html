@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex 사용량 (codex-usage)</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="wf-top">
+  <a href="index.html">← 화면 목록</a>
+  <h1>Codex 사용량 <small>codex-usage</small></h1>
+  <p class="wf-note">미드파이 · 회색 · 실제 문구 · <a href="../../DESIGN.md">DESIGN.md</a> 컴포넌트. 관련 기능: <a href="../02-spec.md#f-09">F-09</a>. 화면 크기 80×24 기준, 단위는 칸.</p>
+</header>
+
+<div class="wf-states">
+  <div id="empty">
+    <p class="wf-state-label">기록 없음 (이 PC 의 기본 상태)</p>
+    <div class="term short"><div class="tbox"><div class="tr between"><b>터미널 플레이그라운드</b><span class="dim">2026-11-05 14:32:07</span></div><div class="thr"></div><div class="tr "></div><div class="tr "><b>Codex 기록을 찾을 수 없음</b></div><div class="tr "></div><div class="tr "><span class="dim">찾은 위치</span>  ~/.codex  <span class="dim">(기록 파일 0개)</span></div><div class="tr "><span class="dim">기록 위치와 형식은 구현 시 확인함</span></div><div class="tr "></div><div class="tr "></div><div class="tr "></div><div class="tr "></div><div class="tr "></div><div class="tr "></div><div class="thr"></div><div class="tr "><span class="dim">[</span><span class="k">r</span><span class="dim">]</span> 다시 찾기    <span class="dim">[</span><span class="k">Esc</span><span class="dim">]</span> <a href="home.html">홈으로</a></div><div class="thr"></div><div class="tr "></div></div></div>
+    <p class="flow">이 PC 에는 ~/.codex 가 없음. 위치는 구현 시 확인하는 추정값임</p>
+  </div>
+  <div id="data">
+    <p class="wf-state-label">기록 있음 (예시 데이터)</p>
+    <div class="term "><div class="tbox"><div class="tr between"><b>터미널 플레이그라운드</b><span class="dim">2026-11-05 14:32:07</span></div><div class="thr"></div><div class="tr "></div><div class="tr "><span class="dim">기간</span>   <span class="dim">  최근 5시간  </span> <span class="k">[ 오늘 ]</span> <span class="dim">  이번 주  </span></div><div class="tr "></div><div class="tr "><span class="c0 dim">모델</span><span class="c dim">입력</span><span class="c dim">출력</span><span class="c dim">캐시 생성</span><span class="c dim">캐시 읽기</span></div><div class="tr "><span class="c0 ">gpt-5-codex</span><span class="c ">98,420</span><span class="c ">22,310</span><span class="c ">-</span><span class="c ">4,210,000</span></div><div class="tr "><span class="c0 ">gpt-5</span><span class="c ">31,055</span><span class="c ">8,904</span><span class="c ">-</span><span class="c ">1,120,500</span></div><div class="tr "><span class="c0 sel">합계</span><span class="c sel">129,475</span><span class="c sel">31,214</span><span class="c sel">-</span><span class="c sel">5,330,500</span></div><div class="tr "></div><div class="tr "><span class="dim" style="width:12ch;display:inline-block">11-05 오늘</span><span class="bk" style="width:18ch"></span>&nbsp;<span>390K</span></div><div class="tr "><span class="dim" style="width:12ch;display:inline-block">11-04</span><span class="bk light" style="width:28ch"></span>&nbsp;<span>612K</span></div><div class="tr "><span class="dim" style="width:12ch;display:inline-block">11-03</span><span class="bk light" style="width:13ch"></span>&nbsp;<span>275K</span></div><div class="tr "><span class="dim" style="width:12ch;display:inline-block">11-02</span><span>-</span></div><div class="tr "><span class="dim" style="width:12ch;display:inline-block">11-01</span><span class="bk light" style="width:7ch"></span>&nbsp;<span>148K</span></div><div class="tr "><span class="dim" style="width:12ch;display:inline-block">10-31</span><span class="bk light" style="width:23ch"></span>&nbsp;<span>501K</span></div><div class="tr "><span class="dim" style="width:12ch;display:inline-block">10-30</span><span class="bk light" style="width:15ch"></span>&nbsp;<span>322K</span></div><div class="thr"></div><div class="tr "><span class="dim">[</span><span class="k">←→</span><span class="dim">]</span> 기간    <span class="dim">[</span><span class="k">r</span><span class="dim">]</span> 새로고침    <span class="dim">[</span><span class="k">Esc</span><span class="dim">]</span> <a href="home.html">홈으로</a></div><div class="thr"></div><div class="tr "><span class="dim">기록 파일 12개를 읽음 · 마지막 갱신 14:32:05</span></div></div></div>
+    <p class="flow">구성은 claude-usage 와 같음. 모델 이름은 예시이고 실제 이름은 기록에서 읽음</p>
+  </div>
+</div>
+
+<aside class="wf-annot">
+  <h2>이 화면에서 사용자가 하는 일</h2>
+  <ol><li>claude-usage 와 같은 화면 구성으로 Codex 토큰 사용량을 봄</li><li>기록이 없는 것이 흔한 상태라서 안내 화면을 기본으로 보여줌 (앱은 정상 동작)</li><li>Esc 로 <a href="home.html">홈</a>으로 돌아감</li></ol>
+</aside>
+</body>
+</html>

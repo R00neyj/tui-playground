@@ -103,3 +103,22 @@ a { color: inherit; }
 .loadbar { white-space: pre; }
 .flow { font: 12px/1.4 system-ui, sans-serif; color: var(--ink-2); text-align: center; margin: 6px 0 0; }
 .wf-states a { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---- 앱 추가분 (DESIGN.md: Meter, Sparkline, Tab row, Table, Bar row, Check row, Lap row, List item 한 줄형) ---- */
+.col-name { display: inline-block; width: 16ch; }
+.tr.meter { display: flex; align-items: center; gap: 2ch; }
+.meter .m-label { width: 10ch; flex: none; }
+.meter .track { flex: 1; height: 3px; background: var(--fill); position: relative; }
+.meter .track i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--strong); }
+.meter .track.warn i { background: repeating-linear-gradient(90deg, var(--strong) 0 5px, #fff 5px 7px); }
+.meter .pct { width: 4ch; text-align: right; flex: none; }
+.meter .m-val { width: 14ch; flex: none; }
+.m-label { display: inline-block; width: 10ch; }
+.spark { letter-spacing: 0; }
+.tr .c0 { display: inline-block; width: 18ch; }
+.tr .c { display: inline-block; width: 13ch; text-align: right; }
+.tr .c.sel, .tr .c0.sel { font-weight: 700; }
+.spk { display: inline-flex; align-items: flex-end; height: 1.45em; width: 30ch; }
+.spk i { display: block; width: 1ch; background: var(--strong); }
+.bk { display: inline-block; height: .9em; background: var(--strong); vertical-align: middle; }
+.bk.light { background: #8a8a8a; }

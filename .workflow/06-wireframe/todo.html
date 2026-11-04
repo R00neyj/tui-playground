@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>할 일 목록 (todo)</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<header class="wf-top">
+  <a href="index.html">← 화면 목록</a>
+  <h1>할 일 목록 <small>todo</small></h1>
+  <p class="wf-note">미드파이 · 회색 · 실제 문구 · <a href="../../DESIGN.md">DESIGN.md</a> 컴포넌트. 관련 기능: <a href="../02-spec.md#f-11">F-11</a>. 화면 크기 80×24 기준, 단위는 칸.</p>
+</header>
+
+<div class="wf-states">
+  <div id="default">
+    <p class="wf-state-label">기본 (5개 중 2개 완료)</p>
+    <div class="term "><div class="tbox"><div class="tr between"><b>터미널 플레이그라운드</b><span class="dim">2026-11-05 14:32:07</span></div><div class="thr"></div><div class="tr flex"><b>할 일</b><span class="dim" style="margin-left:auto">완료 2 / 5</span></div><div class="tr "></div><div class="tr flex"><span class="sel">▸</span>&nbsp;<span class="k">[ ]</span>&nbsp;<span class="sel">보고서 초안 마무리</span></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="k">[ ]</span>&nbsp;<span class="">치과 예약 전화하기</span></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="dim">[x]</span>&nbsp;<span class="dim">택배 반품 신청</span><span class="dim" style="margin-left:auto">완료</span></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="k">[ ]</span>&nbsp;<span class="">월요일 회의 자료 인쇄</span></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="dim">[x]</span>&nbsp;<span class="dim">운동 30분</span><span class="dim" style="margin-left:auto">완료</span></div><div class="thr"></div><div class="tr "><span class="dim">[</span><span class="k">a</span><span class="dim">]</span> 추가   <span class="dim">[</span><span class="k">Space</span><span class="dim">]</span> 완료   <span class="dim">[</span><span class="k">d</span><span class="dim">]</span> 삭제   <span class="dim">[</span><span class="k">↑↓</span><span class="dim">]</span> 이동   <span class="dim">[</span><span class="k">Esc</span><span class="dim">]</span> <a href="home.html">홈으로</a></div><div class="thr"></div><div class="tr "></div></div></div>
+    <p class="flow">↑↓ 이동, Space 완료 토글, d 삭제</p>
+  </div>
+  <div id="empty">
+    <p class="wf-state-label">비어 있음</p>
+    <div class="term short"><div class="tbox"><div class="tr between"><b>터미널 플레이그라운드</b><span class="dim">2026-11-05 14:32:07</span></div><div class="thr"></div><div class="tr flex"><b>할 일</b></div><div class="tr "></div><div class="tr "><span class="dim">할 일이 없음</span></div><div class="tr "><span class="dim">a 를 눌러 첫 항목을 추가함</span></div><div class="tr "></div><div class="tr "></div><div class="tr "></div><div class="thr"></div><div class="tr "><span class="dim">[</span><span class="k">a</span><span class="dim">]</span> 추가   <span class="dim">[</span><span class="k">Space</span><span class="dim">]</span> 완료   <span class="dim">[</span><span class="k">d</span><span class="dim">]</span> 삭제   <span class="dim">[</span><span class="k">↑↓</span><span class="dim">]</span> 이동   <span class="dim">[</span><span class="k">Esc</span><span class="dim">]</span> <a href="home.html">홈으로</a></div><div class="thr"></div><div class="tr "></div></div></div>
+  </div>
+  <div id="adding">
+    <p class="wf-state-label">추가 입력 중 (a)</p>
+    <div class="term short"><div class="tbox"><div class="tr between"><b>터미널 플레이그라운드</b><span class="dim">2026-11-05 14:32:07</span></div><div class="thr"></div><div class="tr flex"><b>할 일</b><span class="dim" style="margin-left:auto">완료 2 / 5</span></div><div class="tr "></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="k">[ ]</span>&nbsp;<span class="">보고서 초안 마무리</span></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="k">[ ]</span>&nbsp;<span class="">치과 예약 전화하기</span></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="dim">[x]</span>&nbsp;<span class="dim">택배 반품 신청</span><span class="dim" style="margin-left:auto">완료</span></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="k">[ ]</span>&nbsp;<span class="">월요일 회의 자료 인쇄</span></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="dim">[x]</span>&nbsp;<span class="dim">운동 30분</span><span class="dim" style="margin-left:auto">완료</span></div><div class="thr"></div><div class="tr "><span class="dim">[</span><span class="k">a</span><span class="dim">]</span> 추가   <span class="dim">[</span><span class="k">Space</span><span class="dim">]</span> 완료   <span class="dim">[</span><span class="k">d</span><span class="dim">]</span> 삭제   <span class="dim">[</span><span class="k">↑↓</span><span class="dim">]</span> 이동   <span class="dim">[</span><span class="k">Esc</span><span class="dim">]</span> <a href="home.html">홈으로</a></div><div class="thr"></div><div class="tr "></div></div>
+<div class="prompt-line"><span>추가  &gt; </span>우유 사오기<span class="caret"> </span></div>
+<div class="prompt-line dim" style="margin-top:0">Enter = 저장    Esc = 취소</div></div>
+    <p class="flow">Enter → 저장하고 목록에 추가 · Esc → 취소</p>
+  </div>
+  <div id="save-error">
+    <p class="wf-state-label">저장 실패</p>
+    <div class="term "><div class="tbox"><div class="tr between"><b>터미널 플레이그라운드</b><span class="dim">2026-11-05 14:32:07</span></div><div class="thr"></div><div class="tr flex"><b>할 일</b><span class="dim" style="margin-left:auto">완료 2 / 5</span></div><div class="tr "></div><div class="tr flex"><span class="sel">▸</span>&nbsp;<span class="k">[ ]</span>&nbsp;<span class="sel">보고서 초안 마무리</span></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="k">[ ]</span>&nbsp;<span class="">치과 예약 전화하기</span></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="dim">[x]</span>&nbsp;<span class="dim">택배 반품 신청</span><span class="dim" style="margin-left:auto">완료</span></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="k">[ ]</span>&nbsp;<span class="">월요일 회의 자료 인쇄</span></div><div class="tr flex"><span class="dim"> </span>&nbsp;<span class="dim">[x]</span>&nbsp;<span class="dim">운동 30분</span><span class="dim" style="margin-left:auto">완료</span></div><div class="thr"></div><div class="tr "><span class="dim">[</span><span class="k">a</span><span class="dim">]</span> 추가   <span class="dim">[</span><span class="k">Space</span><span class="dim">]</span> 완료   <span class="dim">[</span><span class="k">d</span><span class="dim">]</span> 삭제   <span class="dim">[</span><span class="k">↑↓</span><span class="dim">]</span> 이동   <span class="dim">[</span><span class="k">Esc</span><span class="dim">]</span> <a href="home.html">홈으로</a></div><div class="thr"></div><div class="tr "><span class="msg-err">저장하지 못함. 변경 내용은 이 화면에만 있음</span></div></div></div>
+    <p class="flow">목록은 화면에서 계속 편집할 수 있고, 경고만 표시함 (color.warn)</p>
+  </div>
+</div>
+
+<aside class="wf-annot">
+  <h2>이 화면에서 사용자가 하는 일</h2>
+  <ol><li>a 로 항목을 추가하고, Space 로 완료를 체크하고, d 로 지움</li><li>변경할 때마다 저장되고 다음 실행 때 다시 불러옴</li><li>Esc 로 <a href="home.html">홈</a>으로 돌아감 (바로 나감)</li></ol>
+</aside>
+</body>
+</html>
