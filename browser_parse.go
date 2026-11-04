@@ -326,6 +326,8 @@ type brPage struct {
 	Links     []string
 	Truncated bool // 본문이 2MB 를 넘어 잘림
 	Cut       bool // 문서가 너무 커서 일부만 정리함
+	Rendered  bool // 자바스크립트를 실행해 그린 결과에서 읽음 (browser_render.go)
+	Scripts   int  // 문서의 <script> 개수 (자바스크립트 페이지 판단용)
 }
 
 // ---- 내려받기 ----
@@ -508,6 +510,7 @@ type brScan struct {
 	title, h1, body *html.Node
 	articles, mains []*html.Node
 	roleMains       []*html.Node
+	scripts         int
 	named           []*html.Node // 알려진 글 본문 영역 (네이버 블로그 등). article/main 보다 먼저 고름
 	baseHref        string
 	scanned         int
@@ -532,6 +535,8 @@ func brScanDoc(n *html.Node, s *brScan, depth int) {
 			if s.body == nil {
 				s.body = n
 			}
+		case "script":
+			s.scripts++
 		case "article":
 			s.articles = append(s.articles, n)
 		case "main":
@@ -620,6 +625,7 @@ func brNodeText(n *html.Node, depth int, b *strings.Builder) {
 func brExtract(p *brPage, doc *html.Node, final *url.URL) {
 	var s brScan
 	brScanDoc(doc, &s, 0)
+	p.Scripts = s.scripts
 
 	base := final
 	if s.baseHref != "" {

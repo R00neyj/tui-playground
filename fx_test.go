@@ -20,6 +20,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	settingsPath = func() string { return filepath.Join(dir, "settings.json") }
+	brFindEngine = func() string { return "" } // 테스트가 실제 Chrome/Edge 를 띄우지 않게 함 (필요한 테스트만 가짜를 끼움)
 	code := m.Run()
 	os.RemoveAll(dir)
 	os.Exit(code)

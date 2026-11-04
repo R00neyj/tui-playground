@@ -32,6 +32,9 @@ status: done
 | <a id="f-09"></a>[F-09](02-spec/F-09.md) | Codex 사용량 모니터 | N | Could | 사용자 요청 (2026-11-05) |
 | <a id="f-10"></a>[F-10](02-spec/F-10.md) | 스톱워치 | N | Could | 제안 (2026-11-05) |
 | <a id="f-11"></a>[F-11](02-spec/F-11.md) | 할 일 목록 | N | Could | 제안 (2026-11-05) |
+| <a id="f-12"></a>[F-12](02-spec/F-12.md) | 디스크 사용량 트리맵 | N | Could | 구현함 (2026-11-05) |
+| <a id="f-13"></a>[F-13](02-spec/F-13.md) | 웹 브라우저(텍스트) | N | Could | 구현함 (2026-11-05) |
+| <a id="f-14"></a>[F-14](02-spec/F-14.md) | 홈 꾸밈(배경·전환·아케이드 조작부·설정) | N | Could | 구현함 (2026-11-05) |
 
 Priority: Must (required for release) / Should / Could / Won't (excluded this time)
 

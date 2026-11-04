@@ -15,13 +15,13 @@ import (
 )
 
 // 웹 브라우저(텍스트) (F-13). 주소를 열어 글 본문만 텍스트로 보여줌.
-// 자바스크립트·이미지·쿠키·로그인은 지원하지 않음. 페이지에서 온 글자는 화면에 닿기 전에 모두 거름 (browser_parse.go).
+// 이미지·쿠키·로그인은 지원하지 않음. 자바스크립트는 직접 실행하지 않고, 글이 비는 페이지만 설치된 브라우저(Chrome/Edge)로 다시 그려서 읽음 (browser_render.go). 페이지에서 온 글자는 화면에 닿기 전에 모두 거름 (browser_parse.go).
 // Esc 는 (불러오는 중이 아니면) 언제나 홈으로 감.
 
 var browserInfo = AppInfo{
 	ID:   "browser",
 	Name: "웹 브라우저",
-	Desc: "주소를 열어 글을 텍스트로 읽기",
+	Desc: "주소나 검색어로 글을 텍스트로 읽기",
 	New:  func(env *Env) App { return newBrowserApp() },
 }
 
@@ -72,6 +72,10 @@ type browserApp struct {
 	linkBuf string
 	pending string
 
+	jsMode int      // brJSAuto / brJSOn / brJSOff
+	marks  []brMark // 빠른 이동 목록
+	msel   int      // 주소 화면에서 고른 항목 (-1 = 고르지 않음)
+
 	vw, vh int // 마지막으로 그린 본문 폭·높이
 	layPg  *brPage
 	layW   int
@@ -83,10 +87,10 @@ func newBrowserApp() *browserApp {
 	ti.Prompt = "주소 > "
 	ti.PromptStyle = lipgloss.NewStyle().Foreground(colorAccent)
 	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(colorTextMuted)
-	ti.Placeholder = "example.com"
+	ti.Placeholder = "주소 또는 검색어"
 	ti.CharLimit = brMaxURL
 	ti.Focus()
-	return &browserApp{gen: newGen(), input: ti, pos: -1, vw: 46, vh: 6}
+	return &browserApp{gen: newGen(), input: ti, pos: -1, vw: 46, vh: 6, marks: brLoadMarks(), msel: -1}
 }
 
 func (a *browserApp) Init() tea.Cmd { return textinput.Blink }
@@ -109,9 +113,9 @@ func (a *browserApp) startLoad(raw string, reload bool) tea.Cmd {
 	a.cancel = cancel
 	a.loading, a.req, a.frame, a.started = true, newGen(), 0, time.Now()
 	a.say("", ToneInfo)
-	req, fetch := a.req, browserFetch
+	req, fetch, render, mode := a.req, browserFetch, browserRender, a.jsMode
 	run := func() tea.Msg {
-		p, err := fetch(ctx, raw)
+		p, err := brLoadPage(ctx, raw, mode, fetch, render)
 		return brDoneMsg{Req: req, Reload: reload, Asked: raw, Page: p, Err: err}
 	}
 	return tea.Batch(run, tickCmd(150*time.Millisecond, a.gen, "load"))
@@ -156,6 +160,8 @@ func (a *browserApp) onDone(m brDoneMsg) {
 		a.say("문서가 너무 커서 일부만 정리함", ToneWarn)
 	case !brSameSite(m.Asked, p.URL):
 		a.say("다른 사이트로 이동됨: "+brClip(brSiteHost(p.URL), 60), ToneWarn)
+	case p.Rendered:
+		a.say("자바스크립트를 실행해 읽음 ("+brEngineName(brFindEngine())+")", ToneInfo)
 	default:
 		a.say("", ToneInfo)
 	}
@@ -239,19 +245,42 @@ func (a *browserApp) onKey(k tea.KeyMsg) (App, tea.Cmd) {
 }
 
 func (a *browserApp) keyInput(k tea.KeyMsg) (App, tea.Cmd) {
-	if k.String() == "enter" {
+	key := k.String()
+	empty := strings.TrimSpace(a.input.Value()) == ""
+	if empty && len(a.marks) > 0 { // 입력창이 비어 있을 때만 위아래 키로 빠른 이동 목록을 고름
+		n := len(a.marks)
+		switch key {
+		case "up":
+			a.msel = (a.msel + n - 1) % n
+			if a.msel < 0 {
+				a.msel = n - 1
+			}
+			return a, nil
+		case "down":
+			a.msel = (a.msel + 1) % n
+			return a, nil
+		case "ctrl+d":
+			a.deleteMark()
+			return a, nil
+		}
+	}
+	if key == "enter" {
 		v := strings.TrimSpace(a.input.Value())
 		if v == "" {
-			if a.cur != nil {
+			switch {
+			case a.msel >= 0 && a.msel < len(a.marks):
+				return a, a.startLoad(a.marks[a.msel].URL, false)
+			case a.cur != nil:
 				a.mode = brRead
 				a.input.Blur()
 				a.say("", ToneInfo)
-			} else {
-				a.say("주소를 입력할 것", ToneWarn)
+			default:
+				a.say("주소나 검색어를 입력하거나 ↑↓ 로 고를 것", ToneWarn)
 			}
 			return a, nil
 		}
-		norm, err := brNormalizeURL(v)
+		raw, _ := brResolveInput(v)
+		norm, err := brNormalizeURL(raw)
 		if err != nil {
 			a.say(err.Error(), ToneDanger)
 			return a, nil
@@ -260,6 +289,9 @@ func (a *browserApp) keyInput(k tea.KeyMsg) (App, tea.Cmd) {
 	}
 	var cmd tea.Cmd
 	a.input, cmd = a.input.Update(k)
+	if strings.TrimSpace(a.input.Value()) != "" {
+		a.msel = -1
+	}
 	return a, cmd
 }
 
@@ -329,6 +361,11 @@ func (a *browserApp) keyRead(s string) (App, tea.Cmd) {
 		if a.cur != nil {
 			return a, a.startLoad(a.cur.URL, true)
 		}
+	case "m": // 자바스크립트 렌더링 방식: 자동 → 항상 → 끔
+		a.jsMode = (a.jsMode + 1) % len(brJSNames)
+		a.say("자바스크립트 렌더링: "+brJSNames[a.jsMode]+" (r 로 다시 읽으면 적용)", ToneInfo)
+	case "b":
+		a.addMark()
 	default:
 		if len(s) == 1 && s[0] >= '0' && s[0] <= '9' {
 			a.mode, a.linkBuf = brLink, s
@@ -392,17 +429,11 @@ func (a *browserApp) View(c Ctx) string {
 	f.Rule()
 
 	// 본문
-	if a.cur == nil {
-		help := []string{
-			"예) example.com  /  https://example.com/글주소",
-			"글 본문만 읽기 좋게 줄여서 보여줌",
-			"자바스크립트와 이미지는 지원하지 않음",
-			"http, https 주소만 열 수 있음",
-			"본문은 2MB 까지, 응답은 10초 안에 받음",
-		}
+	if a.mode == brInput || a.cur == nil {
+		rows := a.inputRows(tw)
 		for i := 0; i < a.vh; i++ {
-			if i < len(help) {
-				f.Row(sg(brTrunc(help[i], tw), colorTextMuted))
+			if i < len(rows) {
+				f.Row(rows[i]...)
 			} else {
 				f.Blank()
 			}
@@ -425,14 +456,14 @@ func (a *browserApp) View(c Ctx) string {
 	case a.loading:
 		f.MenuInline([2]string{"Esc", "취소하고 홈으로"})
 	case a.mode == brInput:
-		f.MenuInline([2]string{"Enter", "열기"}, [2]string{"Esc", "홈으로"})
+		f.MenuInline([2]string{"Enter", "열기"}, [2]string{"↑↓", "고르기"}, [2]string{"Esc", "홈으로"})
 	case a.mode == brLink:
 		f.MenuInline([2]string{"Enter", "이동"}, [2]string{"Backspace", "지움"}, [2]string{"Esc", "홈으로"})
 	case a.mode == brConfirm:
 		f.MenuInline([2]string{"y", "이동"}, [2]string{"n", "취소"}, [2]string{"Esc", "홈으로"})
 	default:
 		// 폭이 모자라면 두 번째 항목부터 빠지므로 덜 중요한 것을 앞쪽에 둠
-		f.MenuInline([2]string{"↑↓", "스크롤"}, [2]string{"r", "다시"}, [2]string{"h/l", "뒤/앞"}, [2]string{"o", "주소"}, [2]string{"번호", "링크"}, [2]string{"Esc", "홈으로"})
+		f.MenuInline([2]string{"↑↓", "스크롤"}, [2]string{"r", "다시"}, [2]string{"m", "JS"}, [2]string{"b", "저장"}, [2]string{"h/l", "뒤/앞"}, [2]string{"o", "주소"}, [2]string{"번호", "링크"}, [2]string{"Esc", "홈으로"})
 	}
 	if below > 0 {
 		// 입력창의 가로 스크롤 위치는 폭이 바뀔 때 다시 계산해야 함
