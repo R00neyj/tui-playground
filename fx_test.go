@@ -302,7 +302,7 @@ func TestTransitionOnOpenAndHome(t *testing.T) {
 	if m.ph != phHome || m.trans == nil || !m.trans.reverse {
 		t.Fatal("홈으로 돌아올 때도 전환이 있어야 함")
 	}
-	m.trans.started = time.Now().Add(-2 * transDur)
+	m.trans.started = time.Now().Add(-2 * transDuration(m.trans.kind))
 	m = step(t, m, animTickMsg(time.Now()))
 	if m.trans != nil {
 		t.Fatal("전환 시간이 지나면 끝나야 함")
@@ -362,5 +362,60 @@ func TestDumpFrames(t *testing.T) {
 			m.ph = phHome
 		}
 		os.WriteFile(filepath.Join(dir, name+".ansi"), []byte(m.View()), 0o600)
+	}
+}
+
+// 앱 화면에도 배경·조작부가 이어지는지: 모든 앱 × 배경 × 조작부 × 창 크기에서 줄 수와 폭이 맞아야 함
+func TestAppScreensKeepBackgroundAndArcade(t *testing.T) {
+	forceProfile(t, termenv.TrueColor)
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("USERPROFILE", t.TempDir())
+	t.Setenv("LOCALAPPDATA", t.TempDir())
+	t.Setenv("APPDATA", t.TempDir())
+	sizes := append([][2]int{{100, 40}}, testSizes...)
+	for i := range registry {
+		for _, arcade := range []bool{false, true} {
+			for _, sz := range sizes {
+				m := newModel()
+				m.set = Settings{Bg: "H", Trans: 0, Arcade: arcade}
+				m.w, m.h, m.ph = sz[0], sz[1], phHome
+				mm, _ := m.openApp(i)
+				v := mm.View()
+				n, ok, w := lineWidths(v)
+				if !ok || w != sz[0] || n != sz[1] {
+					t.Fatalf("앱 %d 조작부=%v %dx%d: 폭/줄 수 어긋남 (n=%d ok=%v w=%d)", i, arcade, sz[0], sz[1], n, ok, w)
+				}
+				hasArcade := strings.Contains(ansi.Strip(v), "COIN")
+				_, want := mm.appCtx(mm.ctx())
+				if hasArcade != want {
+					t.Fatalf("앱 %d %dx%d: 조작부 표시(%v)가 판단(%v)과 다름", i, sz[0], sz[1], hasArcade, want)
+				}
+				if sz[0] == 100 && sz[1] == 40 && arcade && !hasArcade {
+					t.Fatalf("앱 %d: 큰 창에서는 조작부가 이어져야 함", i)
+				}
+			}
+		}
+	}
+}
+
+// 디졸브는 전환 중간(u=0.5)에 가장 짙고, 처음과 끝에서는 옅어야 함
+func TestDissolvePeaksInMiddle(t *testing.T) {
+	forceProfile(t, termenv.TrueColor)
+	c := testCtx(100, 30)
+	a := parseGrid(c.Place(NewFrame(c).Blank().Row(sg("옛 화면", colorText)).String()), c.W, c.H)
+	b := parseGrid(c.Place(NewFrame(c).Blank().Row(sg("새 화면", colorText)).String()), c.W, c.H)
+	dark := func(u float64) int {
+		n := 0
+		for _, cl := range blend(3, a, b, u, false).c {
+			if cl.r == '▓' || cl.r == '█' {
+				n++
+			}
+		}
+		return n
+	}
+	d1, d5, d9 := dark(0.1), dark(0.5), dark(0.9)
+	t.Logf("짙은 블록 수: u=0.1 → %d, u=0.5 → %d, u=0.9 → %d", d1, d5, d9)
+	if d5 <= d1 || d5 <= d9 {
+		t.Fatalf("중간이 가장 짙어야 함: %d %d %d", d1, d5, d9)
 	}
 }

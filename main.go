@@ -94,7 +94,7 @@ func (m model) wantsAnim(now time.Time) bool {
 	if m.trans != nil {
 		return true
 	}
-	if m.ph == phHome || m.ph == phSettings {
+	if m.ph == phHome || m.ph == phSettings || (m.ph == phApp && m.app != nil) {
 		return m.set.Bg != "" || m.pulses.active(now)
 	}
 	return false
@@ -117,7 +117,7 @@ func (m model) update(msg tea.Msg) (model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case animTickMsg:
 		m.animOn = false // 아직 필요하면 Update 가 다시 걺
-		if m.trans != nil && time.Since(m.trans.started) >= transDur {
+		if m.trans != nil && time.Since(m.trans.started) >= transDuration(m.trans.kind) {
 			m.trans = nil
 		}
 		return m, nil
@@ -153,6 +153,9 @@ func (m model) update(msg tea.Msg) (model, tea.Cmd) {
 		}
 		if m.trans != nil { // 아무 키나 누르면 전환을 바로 끝냄
 			m.trans = nil
+		}
+		if m.ph == phApp { // 앱 안에서도 조작부가 키 입력에 반응함 (키는 그대로 앱에 전달됨)
+			m = m.notePress(msg.String())
 		}
 		switch m.ph {
 		case phIntro:
@@ -254,11 +257,14 @@ func (m model) View() string {
 		return m.viewIntro()
 	}
 	if m.trans != nil && c.W > 0 && c.H > 0 {
-		u := clampF(float64(time.Since(m.trans.started))/float64(transDur), 0, 1)
+		u := clampF(float64(time.Since(m.trans.started))/float64(transDuration(m.trans.kind)), 0, 1)
 		return blend(m.trans.kind, m.trans.a, m.trans.b, u, m.trans.reverse).String()
 	}
 	if m.ph == phApp {
 		if m.app != nil {
+			if m.fxApp(c) {
+				return m.appGrid(c).String()
+			}
 			return c.Place(m.app.View(c))
 		}
 	}

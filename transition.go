@@ -81,19 +81,31 @@ func blend(kind int, a, b *grid, u float64, reverse bool) *grid {
 				default:
 					out = pickA(x, y)
 				}
-			case 3: // 디졸브: 칸이 무작위로 하나씩 반짝이며 바뀜
+			case 3: // 디졸브: 칸마다 ░▒▓█▓▒░ 로 짙어졌다가 옅어지며 새 화면으로 바뀜. 전환 전체로도 중간(u=0.5)에 가장 밝음
 				n := hash(math.Floor(ex/2), float64(y), 7)
-				th := easeIO(u)*1.16 - 0.08
+				th := u*1.5 - 0.1
 				switch {
-				case n < th-0.07:
+				case n < th-0.36:
 					out = pickB(x, y)
 				case n < th+0.02:
-					ch := '+'
-					if n > th-0.03 {
-						ch = '*'
+					p := clampF((th+0.02-n)/0.38, 0, 1) // 칸 하나의 진행: 0 → 1
+					tri := 1 - math.Abs(2*p-1)          // 0 → 1 → 0 (가운데가 가장 짙음)
+					env := 0.25 + 0.75*math.Sin(math.Pi*u)
+					k := tri * env
+					ch := '░'
+					switch {
+					case k > 0.7:
+						ch = '█'
+					case k > 0.45:
+						ch = '▓'
+					case k > 0.2:
+						ch = '▒'
 					}
-					oc := pickA(x, y)
-					out = cell{r: ch, w: 1, st: style{fg: colSeq(false, gradV([]vec{{97, 214, 214}, {255, 255, 255}}, hash(float64(x), float64(y), 3))), bg: oc.st.bg}}
+					under := pickA(x, y) // 앞쪽 절반은 옛 화면 바탕, 뒤쪽 절반은 새 화면 바탕 위에서 옅어짐
+					if p >= 0.5 {
+						under = pickB(x, y)
+					}
+					out = cell{r: ch, w: 1, st: style{fg: colSeq(false, gradV([]vec{{60, 120, 200}, {97, 214, 214}, {235, 250, 255}}, k)), bg: under.st.bg}}
 				default:
 					out = pickA(x, y)
 				}
@@ -127,3 +139,6 @@ func blend(kind int, a, b *grid, u float64, reverse bool) *grid {
 	g.sanitize()
 	return g
 }
+
+// transDuration 은 전환 종류별 길이. 지금은 모두 같음 (디졸브를 1.5초로 늘려봤다가 원래 속도로 되돌림)
+func transDuration(kind int) time.Duration { return transDur }
