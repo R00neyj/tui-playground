@@ -2,12 +2,12 @@ package main
 
 import (
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/x/ansi"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestParseMin(t *testing.T) {
@@ -22,63 +22,72 @@ func TestParseMin(t *testing.T) {
 	}
 }
 
-func TestBigRowsWidth(t *testing.T) {
-	rows := bigRows("12:34:56")
-	for i, r := range rows {
-		if lipgloss.Width(r) != lipgloss.Width(rows[0]) {
-			t.Errorf("row %d width %d != %d", i, lipgloss.Width(r), lipgloss.Width(rows[0]))
+// ---- 호스트와 홈 ----
+
+func key(s string) tea.KeyMsg {
+	switch s {
+	case "esc":
+		return tea.KeyMsg{Type: tea.KeyEsc}
+	case "enter":
+		return tea.KeyMsg{Type: tea.KeyEnter}
+	case "up":
+		return tea.KeyMsg{Type: tea.KeyUp}
+	case "down":
+		return tea.KeyMsg{Type: tea.KeyDown}
+	}
+	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
+}
+
+func TestRegistrySane(t *testing.T) {
+	seen := map[string]bool{}
+	for _, info := range registry {
+		if info.ID == "" || info.Name == "" || info.Desc == "" || info.New == nil {
+			t.Errorf("등록 정보가 비어 있음: %+v", info)
 		}
+		if seen[info.ID] {
+			t.Errorf("앱 ID 가 겹침: %s", info.ID)
+		}
+		seen[info.ID] = true
 	}
 }
 
-func checkAligned(t *testing.T, name, view string) {
-	t.Helper()
-	lines := strings.Split(view, "\n")
-	// 박스 줄(│ ╭ ├ ╰ 로 시작)만 비교
-	w := -1
-	for _, l := range lines {
-		plain := strings.TrimLeft(l, " ")
-		if !(strings.HasPrefix(plain, "│") || strings.HasPrefix(plain, "╭") || strings.HasPrefix(plain, "├") || strings.HasPrefix(plain, "╰")) {
-			continue
-		}
-		lw := lipgloss.Width(strings.TrimSpace(l))
-		if w < 0 {
-			w = lw
-		} else if lw != w {
-			t.Errorf("%s: 박스 줄 폭 불일치 %d != %d: %q", name, lw, w, l)
-		}
-	}
-	if w < 0 {
-		t.Errorf("%s: 박스 줄 없음", name)
-	}
-}
-
-func TestViewsAligned(t *testing.T) {
-	for _, sz := range [][2]int{{120, 40}, {80, 24}, {80, 21}, {60, 20}, {56, 17}} {
-		m := newModel()
-		m.w, m.h = sz[0], sz[1]
-		m.ph = phMain
-		m.say("메시지 확인 용 한글 문장입니다", cGreen)
-		checkAligned(t, "idle", m.viewMain())
-		m.cur = &Timer{Start: time.Now().Add(-5 * time.Minute), Target: time.Now().Add(25 * time.Minute)}
-		checkAligned(t, "active", m.viewMain())
-		m.cur = &Timer{Start: time.Now().Add(-1 * time.Hour), Target: time.Now().Add(100 * time.Hour)}
-		checkAligned(t, "100h", m.viewMain())
-		m.ph = phReserve
-		checkAligned(t, "reserve", m.viewReserve())
-		m.cur = nil
-		checkAligned(t, "reserve-nocur", m.viewReserve())
-	}
-}
-
-func TestProgressBarMoves(t *testing.T) {
+func TestHomeViewAligned(t *testing.T) {
+	t.Setenv("LOCALAPPDATA", t.TempDir())
 	m := newModel()
-	m.w, m.h = 100, 40
-	m.ph = phMain
-	m.cur = &Timer{Start: time.Now().Add(-15 * time.Minute), Target: time.Now().Add(15 * time.Minute)}
-	v := m.viewMain()
-	if !strings.Contains(v, " 50%") {
-		t.Errorf("50%% 표시가 없음:\n%s", v)
+	for _, sz := range testSizes {
+		c := testCtx(sz[0], sz[1])
+		v := m.viewHome(c)
+		assertFrame(t, "home", c, v)
+		for _, info := range registry {
+			if !strings.Contains(plain(v), info.Name) {
+				t.Errorf("홈에 앱 이름이 없음: %s", info.Name)
+			}
+		}
+	}
+}
+
+func TestHostFlow(t *testing.T) {
+	t.Setenv("LOCALAPPDATA", t.TempDir())
+	var mod tea.Model = newModel()
+	mod, _ = mod.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	mod, _ = mod.Update(key("x")) // 인트로 건너뛰기
+	if mod.(model).ph != phHome {
+		t.Fatalf("인트로가 건너뛰어지지 않음")
+	}
+	mod, _ = mod.Update(key("down"))
+	if mod.(model).sel != 1 {
+		t.Fatalf("아래 키로 선택이 이동하지 않음: %d", mod.(model).sel)
+	}
+	mod, _ = mod.Update(key("1")) // 숫자키로 바로 열기
+	if m := mod.(model); m.ph != phApp || m.sel != 0 || m.app == nil {
+		t.Fatalf("1번 앱이 열리지 않음: %+v", m.ph)
+	}
+	mod, _ = mod.Update(goHomeMsg{})
+	if m := mod.(model); m.ph != phHome || m.app != nil || m.sel != 0 {
+		t.Fatalf("홈으로 복귀하지 않음")
+	}
+	if _, cmd := mod.Update(key("q")); cmd == nil {
+		t.Fatalf("홈에서 q 로 종료되지 않음")
 	}
 }
 
@@ -91,144 +100,43 @@ func TestIntroFrames(t *testing.T) {
 			t.Errorf("intro 비어 있음 @%v", d)
 		}
 	}
-	// 끝 무렵에는 부제목이 "터 미 널   플 레 이 그 라 운 드" 형태로 완성돼야 함
 	m.introStart = time.Now().Add(-2 * time.Second)
-	if v := ansi.Strip(m.viewIntro()); !strings.Contains(v, "터 미 널   플 레 이 그 라 운 드") {
+	if v := plain(m.viewIntro()); !strings.Contains(v, "터 미 널   플 레 이 그 라 운 드") {
 		t.Errorf("부제목이 없음:\n%s", v)
 	}
-	// 폭이 좁은 창에서도 로고가 잘리지 않아야 함
 	m.w, m.h = 30, 20
-	m.introStart = time.Now().Add(-2 * time.Second)
 	_ = m.viewIntro()
 }
 
-func TestHeaderHasAppName(t *testing.T) {
-	m := newModel()
-	m.w, m.h = 100, 40
-	m.ph = phMain
-	if v := ansi.Strip(m.viewMain()); !strings.Contains(v, appName) {
-		t.Errorf("헤더에 앱 이름이 없음")
-	}
-}
-
-// ---- 예약 로직 (shutdown.exe 는 가짜로 대체) ----
-
-type fakeSD struct {
-	calls   [][]string
-	results []int // 호출 순서대로 반환할 코드, 모자라면 0
-}
-
-func (f *fakeSD) run(args ...string) int {
-	f.calls = append(f.calls, args)
-	if len(f.results) == 0 {
-		return 0
-	}
-	r := f.results[0]
-	f.results = f.results[1:]
-	return r
-}
-
-func setup(t *testing.T, results ...int) (*fakeSD, model) {
-	t.Helper()
+// 등록된 모든 앱에 공통으로 적용하는 검사 (새 앱도 registry 에 넣으면 자동으로 검사받음)
+func TestAllAppsRender(t *testing.T) {
 	t.Setenv("LOCALAPPDATA", t.TempDir())
-	f := &fakeSD{results: results}
-	old := runShutdown
-	runShutdown = f.run
-	t.Cleanup(func() { runShutdown = old })
-	m := newModel()
-	m.boot = bootUnix()
-	return f, m
-}
-
-func TestSetTimerNew(t *testing.T) {
-	f, m := setup(t)
-	m.setTimer(1800)
-	if m.cur == nil || len(f.calls) != 1 || m.msgCol != cGreen {
-		t.Fatalf("cur=%v calls=%v msg=%q", m.cur, f.calls, m.msg)
-	}
-	if loadTimer(m.boot) == nil {
-		t.Fatal("상태 파일이 저장되지 않음")
+	env := &Env{Boot: bootUnix()}
+	for _, info := range registry {
+		for _, sz := range testSizes {
+			a := info.New(env)
+			if a == nil {
+				t.Fatalf("%s: New 가 nil 을 돌려줌", info.ID)
+			}
+			c := testCtx(sz[0], sz[1])
+			assertFrame(t, info.ID, c, a.View(c))
+		}
 	}
 }
 
-func TestSetTimerReplacesExisting(t *testing.T) {
-	f, m := setup(t, 1190, 0, 0) // /s -> 이미 예약됨, /a -> ok, /s -> ok
-	m.setTimer(600)
-	if len(f.calls) != 3 || f.calls[1][0] != "/a" || m.cur == nil || !strings.Contains(m.msg, "기존 예약 취소됨") {
-		t.Fatalf("calls=%v msg=%q", f.calls, m.msg)
-	}
-}
-
-func TestSetTimerFailKeepsOld(t *testing.T) {
-	f, m := setup(t)
-	m.setTimer(3600) // 기존 타이머
-	f.calls = nil
-	f.results = []int{1190, 0, 5, 0} // /s 중복, /a ok, /s 실패, 복구 /s ok
-	oldTarget := m.cur.Target
-	m.setTimer(60)
-	if m.cur == nil || !m.cur.Target.Equal(oldTarget) || !strings.Contains(m.msg, "기존 타이머 유지됨") {
-		t.Fatalf("cur=%v msg=%q calls=%v", m.cur, m.msg, f.calls)
-	}
-	if last := f.calls[len(f.calls)-1]; last[0] != "/s" {
-		t.Fatalf("복구 호출이 없음: %v", f.calls)
-	}
-}
-
-func TestSetTimerFailRestoreFails(t *testing.T) {
-	f, m := setup(t)
-	m.setTimer(3600)
-	f.results = []int{1190, 0, 5, 7}
-	m.setTimer(60)
-	if m.cur != nil || !strings.Contains(m.msg, "취소된 상태") {
-		t.Fatalf("cur=%v msg=%q", m.cur, m.msg)
-	}
-	if _, err := os.Stat(statePath()); err == nil {
-		t.Fatal("상태 파일이 남아 있음")
-	}
-}
-
-func TestSetTimerFirstFailsOtherCode(t *testing.T) {
-	f, m := setup(t)
-	m.setTimer(3600)
-	old := m.cur
-	f.calls = nil
-	f.results = []int{5}
-	m.setTimer(60)
-	if m.cur != old || len(f.calls) != 1 || m.msgCol != cRed {
-		t.Fatalf("기존 예약이 유지돼야 함: calls=%v msg=%q", f.calls, m.msg)
-	}
-}
-
-func TestSyncOtherWindowCancel(t *testing.T) {
-	_, m := setup(t)
-	m.setTimer(3600)
-	os.Remove(statePath()) // 다른 창에서 취소
-	m.sync()
-	if m.cur != nil || !strings.Contains(m.msg, "다른 곳에서 취소됨") {
-		t.Fatalf("cur=%v msg=%q", m.cur, m.msg)
-	}
-}
-
-func TestSyncStateWriteFailure(t *testing.T) {
-	_, m := setup(t)
-	// 상태 파일 경로를 디렉터리로 막아 쓰기 실패를 유도
-	os.MkdirAll(statePath(), 0o755)
-	os.WriteFile(statePath()+`\keep`, []byte("x"), 0o600) // 비어 있지 않아야 Remove 로 지워지지 않음
-	m.setTimer(3600)
-	if m.cur == nil || !m.cur.NoFile || m.msgCol != cYellow {
-		t.Fatalf("cur=%v msg=%q", m.cur, m.msg)
-	}
-	m.sync()
-	if m.cur == nil {
-		t.Fatal("NoFile 타이머가 sync 에서 사라짐")
-	}
-}
-
-func TestStaleBootDropped(t *testing.T) {
-	_, m := setup(t)
-	m.setTimer(3600)
-	if loadTimer(m.boot+3600) != nil {
-		t.Fatal("다른 부팅의 상태 파일이 유지됨")
+func TestFreshAppEscGoesHome(t *testing.T) {
+	t.Setenv("LOCALAPPDATA", t.TempDir())
+	env := &Env{Boot: bootUnix()}
+	for _, info := range registry {
+		a := info.New(env)
+		_, cmd := a.Update(key("esc"))
+		if cmd == nil {
+			t.Errorf("%s: 처음 상태에서 Esc 를 눌러도 홈으로 가지 않음", info.ID)
+			continue
+		}
+		if _, ok := cmd().(goHomeMsg); !ok {
+			t.Errorf("%s: Esc 의 결과가 goHomeMsg 가 아님", info.ID)
+		}
 	}
 }
 
@@ -242,14 +150,174 @@ func TestBootUnixStable(t *testing.T) {
 	if up := time.Now().Unix() - a; up < 0 || up > 3650*86400 {
 		t.Errorf("가동 시간이 이상함: %d초", up)
 	}
-	t.Logf("boot=%s", time.Unix(a, 0).Format(time.RFC3339))
 }
 
-func TestStopTimer(t *testing.T) {
-	_, m := setup(t)
-	m.setTimer(3600)
-	m.stopTimer()
-	if m.cur != nil || loadTimer(m.boot) != nil || m.msgCol != cGreen {
-		t.Fatalf("cur=%v msg=%q", m.cur, m.msg)
+// ---- 종료 타이머 로직 (shutdown 은 가짜로 대체) ----
+
+type fakeSD struct {
+	calls   []string
+	results []int // schedule 호출 순서대로 돌려줄 코드, 모자라면 0
+	cancels int
+}
+
+func (f *fakeSD) schedule(sec int64) int {
+	f.calls = append(f.calls, "s"+strconv.FormatInt(sec, 10))
+	if len(f.results) == 0 {
+		return 0
+	}
+	r := f.results[0]
+	f.results = f.results[1:]
+	return r
+}
+
+func (f *fakeSD) cancel() bool { f.calls = append(f.calls, "a"); f.cancels++; return true }
+
+func setupTimer(t *testing.T, results ...int) (*fakeSD, *timerApp) {
+	t.Helper()
+	t.Setenv("LOCALAPPDATA", t.TempDir())
+	f := &fakeSD{results: results}
+	oldS, oldC := shutdownSchedule, shutdownCancel
+	shutdownSchedule, shutdownCancel = f.schedule, f.cancel
+	t.Cleanup(func() { shutdownSchedule, shutdownCancel = oldS, oldC })
+	env := &Env{Boot: bootUnix()}
+	return f, newTimerApp(env).(*timerApp)
+}
+
+func TestTimerSetNew(t *testing.T) {
+	f, a := setupTimer(t)
+	a.setTimer(1800)
+	if a.cur == nil || len(f.calls) != 1 || a.msgTone != ToneOk {
+		t.Fatalf("cur=%v calls=%v msg=%q", a.cur, f.calls, a.msg)
+	}
+	if loadTimer(a.env.Boot) == nil {
+		t.Fatal("상태 파일이 저장되지 않음")
+	}
+}
+
+func TestTimerReplacesExisting(t *testing.T) {
+	f, a := setupTimer(t, codeAlreadyScheduled, 0)
+	a.setTimer(600)
+	if len(f.calls) != 3 || f.calls[1] != "a" || a.cur == nil || !strings.Contains(a.msg, "기존 예약 취소됨") {
+		t.Fatalf("calls=%v msg=%q", f.calls, a.msg)
+	}
+}
+
+func TestTimerFailKeepsOld(t *testing.T) {
+	f, a := setupTimer(t)
+	a.setTimer(3600)
+	f.calls = nil
+	f.results = []int{codeAlreadyScheduled, 5, 0} // 중복, 새 예약 실패, 복구 성공
+	oldTarget := a.cur.Target
+	a.setTimer(60)
+	if a.cur == nil || !a.cur.Target.Equal(oldTarget) || !strings.Contains(a.msg, "기존 타이머 유지됨") {
+		t.Fatalf("cur=%v msg=%q calls=%v", a.cur, a.msg, f.calls)
+	}
+	if !strings.HasPrefix(f.calls[len(f.calls)-1], "s") {
+		t.Fatalf("복구 호출이 없음: %v", f.calls)
+	}
+}
+
+func TestTimerFailRestoreFails(t *testing.T) {
+	f, a := setupTimer(t)
+	a.setTimer(3600)
+	f.results = []int{codeAlreadyScheduled, 5, 7}
+	a.setTimer(60)
+	if a.cur != nil || !strings.Contains(a.msg, "취소된 상태") {
+		t.Fatalf("cur=%v msg=%q", a.cur, a.msg)
+	}
+	if _, err := os.Stat(statePath()); err == nil {
+		t.Fatal("상태 파일이 남아 있음")
+	}
+}
+
+func TestTimerFirstFailsOtherCode(t *testing.T) {
+	f, a := setupTimer(t)
+	a.setTimer(3600)
+	old := a.cur
+	f.calls = nil
+	f.results = []int{5}
+	a.setTimer(60)
+	if a.cur != old || len(f.calls) != 1 || a.msgTone != ToneDanger {
+		t.Fatalf("기존 예약이 유지돼야 함: calls=%v msg=%q", f.calls, a.msg)
+	}
+}
+
+func TestTimerSyncOtherWindowCancel(t *testing.T) {
+	_, a := setupTimer(t)
+	a.setTimer(3600)
+	os.Remove(statePath()) // 다른 창에서 취소
+	a.sync()
+	if a.cur != nil || !strings.Contains(a.msg, "다른 곳에서 취소됨") {
+		t.Fatalf("cur=%v msg=%q", a.cur, a.msg)
+	}
+}
+
+func TestTimerStateWriteFailure(t *testing.T) {
+	_, a := setupTimer(t)
+	os.MkdirAll(statePath(), 0o755) // 상태 파일 경로를 디렉터리로 막아 쓰기 실패를 유도
+	os.WriteFile(statePath()+`\keep`, []byte("x"), 0o600)
+	a.setTimer(3600)
+	if a.cur == nil || !a.cur.NoFile || a.msgTone != ToneWarn {
+		t.Fatalf("cur=%v msg=%q", a.cur, a.msg)
+	}
+	a.sync()
+	if a.cur == nil {
+		t.Fatal("NoFile 타이머가 sync 에서 사라짐")
+	}
+}
+
+func TestTimerStaleBootDropped(t *testing.T) {
+	_, a := setupTimer(t)
+	a.setTimer(3600)
+	if loadTimer(a.env.Boot+3600) != nil {
+		t.Fatal("다른 부팅의 상태 파일이 유지됨")
+	}
+}
+
+func TestTimerStop(t *testing.T) {
+	_, a := setupTimer(t)
+	a.setTimer(3600)
+	a.stopTimer()
+	if a.cur != nil || loadTimer(a.env.Boot) != nil || a.msgTone != ToneOk {
+		t.Fatalf("cur=%v msg=%q", a.cur, a.msg)
+	}
+}
+
+func TestTimerViewsAligned(t *testing.T) {
+	_, a := setupTimer(t)
+	for _, sz := range testSizes {
+		c := testCtx(sz[0], sz[1])
+		a.ph = tpMain
+		a.cur = nil
+		assertFrame(t, "timer-idle", c, a.View(c))
+		a.cur = &Timer{Start: fixedNow.Add(-22 * time.Minute), Target: fixedNow.Add(38 * time.Minute)}
+		assertFrame(t, "timer-active", c, a.View(c))
+		a.cur = &Timer{Start: fixedNow.Add(-1 * time.Hour), Target: fixedNow.Add(42 * time.Second)}
+		a.say("예약 실패 (오류 5) / 기존 타이머 유지됨", ToneDanger)
+		assertFrame(t, "timer-danger", c, a.View(c))
+		a.ph = tpNew
+		assertFrame(t, "timer-new", c, a.View(c))
+		a.inputErr = "잘못된 입력."
+		assertFrame(t, "timer-new-err", c, a.View(c))
+	}
+}
+
+func TestTimerProgressMoves(t *testing.T) {
+	_, a := setupTimer(t)
+	a.cur = &Timer{Start: fixedNow.Add(-15 * time.Minute), Target: fixedNow.Add(15 * time.Minute)}
+	c := testCtx(100, 40)
+	if v := plain(a.View(c)); !strings.Contains(v, " 50%") {
+		t.Errorf("50%% 표시가 없음:\n%s", v)
+	}
+}
+
+func TestTimerStatusForHome(t *testing.T) {
+	_, a := setupTimer(t)
+	if st := timerStatus(a.env, time.Now()); st.Badge != "" || st.Text != "예약 없음" {
+		t.Errorf("예약이 없을 때 상태: %+v", st)
+	}
+	a.setTimer(3600)
+	if st := timerStatus(a.env, time.Now()); st.Badge != "예약됨" || st.Tone != ToneOk || st.Hint == "" {
+		t.Errorf("예약 중 상태: %+v", st)
 	}
 }

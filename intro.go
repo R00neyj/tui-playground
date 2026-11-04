@@ -29,14 +29,12 @@ var logoRows = []string{
 	"   ╚═╝    ╚═════╝ ╚═╝",
 }
 
-const appName = "터미널 플레이그라운드"
-
 var logoGrad = func() []lipgloss.Color {
 	var g []lipgloss.Color
 	for _, p := range []struct {
 		c lipgloss.Color
 		n int
-	}{{cBlue, 3}, {cDarkCyan, 3}, {cCyan, 6}, {cWhite, 3}, {cGray, 3}} {
+	}{{colorIntroBlue, 3}, {colorIntroDarkCyan, 3}, {colorAccent, 6}, {colorText, 3}, {colorTextMuted, 3}} {
 		for i := 0; i < p.n; i++ {
 			g = append(g, p.c)
 		}
@@ -75,7 +73,7 @@ func (m model) viewIntro() string {
 			case i > sweep:
 				b.WriteString(strings.Repeat(" ", e-s))
 			case sweep-i < 3:
-				b.WriteString(fg(part, cWhite))
+				b.WriteString(fg(part, colorText))
 			default:
 				b.WriteString(fg(part, logoGrad[i*len(logoGrad)/used]))
 			}
@@ -96,7 +94,7 @@ func (m model) viewIntro() string {
 		}
 	}
 	typed := string(sub[:n])
-	out = append(out, fg(typed, cDarkGray)+strings.Repeat(" ", lipgloss.Width(subStr)-lipgloss.Width(typed)), "")
+	out = append(out, fg(typed, colorTextMuted)+strings.Repeat(" ", lipgloss.Width(subStr)-lipgloss.Width(typed)), "")
 
 	// 진행 막대
 	p := 0
@@ -108,15 +106,15 @@ func (m model) viewIntro() string {
 	}
 	filled := introBarWidth * p / 100
 	if t >= introSubEnd {
-		out = append(out, fg(strings.Repeat("█", filled), cCyan)+fg(strings.Repeat("░", introBarWidth-filled), cDarkGray)+fg(fmt.Sprintf(" %3d%%", p), cWhite))
+		out = append(out, fg(strings.Repeat("█", filled), colorAccent)+fg(strings.Repeat("░", introBarWidth-filled), colorTextFaint)+fg(fmt.Sprintf(" %3d%%", p), colorText))
 		if t >= introBarEnd {
-			out = append(out, fg("준비 완료", cGreen))
+			out = append(out, fg("준비 완료", colorOk))
 		} else {
-			out = append(out, fg(introSteps[min(2, p/34)], cDarkGray))
+			out = append(out, fg(introSteps[min(2, p/34)], colorTextMuted))
 		}
 	}
 
 	// 줄마다 가운데 정렬 (줄 길이가 달라도 로고 위치가 흔들리지 않도록 로고 폭 기준 블록)
 	block := lipgloss.NewStyle().Width(max(width, introBarWidth+5)).Align(lipgloss.Center).Render(strings.Join(out, "\n"))
-	return m.center(block)
+	return m.ctx().Place(block)
 }

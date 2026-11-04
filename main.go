@@ -3,47 +3,32 @@ package main
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type phase int
 
 const (
 	phIntro phase = iota
-	phMain
-	phReserve
+	phHome
+	phApp
 )
 
-type tickMsg time.Time
-
+// model 은 호스트: 인트로 → 홈 → 앱 사이를 오가고, 앱 하나에 메시지를 전달함
 type model struct {
 	ph         phase
 	w, h       int
 	introStart time.Time
-	boot       int64
-	cur        *Timer
-	msg        string
-	msgCol     lipgloss.Color
-	input      textinput.Model
-	inputErr   string
-	lastSync   int64
+	env        *Env
+	sel        int // 홈에서 선택된 줄
+	app        App // 실행 중인 앱 (phApp 일 때만)
 }
 
-func itoa(n int) string { return strconv.Itoa(n) }
-
 func newModel() model {
-	ti := textinput.New()
-	ti.Prompt = "분  > "
-	ti.PromptStyle = lipgloss.NewStyle().Foreground(cCyan)
-	ti.CharLimit = 16
-	ti.Width = 20
-	return model{ph: phIntro, introStart: time.Now(), boot: bootUnix(), input: ti, msgCol: cGray}
+	return model{ph: phIntro, introStart: time.Now(), env: &Env{Boot: bootUnix()}}
 }
 
 func tick(d time.Duration) tea.Cmd {
@@ -54,11 +39,16 @@ func (m model) Init() tea.Cmd {
 	return tea.Batch(tea.SetWindowTitle(appName), tick(33*time.Millisecond))
 }
 
-func (m model) finishIntro() model {
-	m.ph = phMain
-	m.cur = loadTimer(m.boot)
-	m.lastSync = time.Now().Unix()
-	return m
+func (m model) ctx() Ctx { return Ctx{W: m.w, H: m.h, Now: time.Now()} }
+
+func (m model) openApp(i int) (model, tea.Cmd) {
+	if i < 0 || i >= len(registry) {
+		return m, nil
+	}
+	m.sel = i
+	m.app = registry[i].New(m.env)
+	m.ph = phApp
+	return m, m.app.Init()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -70,82 +60,78 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tickMsg:
 		if m.ph == phIntro {
 			if time.Since(m.introStart) >= introTotal {
-				return m.finishIntro(), tick(250 * time.Millisecond)
+				m.ph = phHome
+				return m, tick(250 * time.Millisecond)
 			}
 			return m, tick(33 * time.Millisecond)
 		}
-		if now := time.Now().Unix(); now != m.lastSync {
-			m.lastSync = now
-			m.sync()
+		next := tick(250 * time.Millisecond)
+		if m.ph == phApp {
+			var cmd tea.Cmd
+			m.app, cmd = m.app.Update(msg)
+			return m, tea.Batch(next, cmd)
 		}
-		return m, tick(250 * time.Millisecond)
+		return m, next
+
+	case goHomeMsg:
+		m.ph, m.app = phHome, nil
+		return m, nil
 
 	case tea.KeyMsg:
-		key := msg.String()
-		if key == "ctrl+c" {
+		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
 		switch m.ph {
 		case phIntro:
-			return m.finishIntro(), tick(250 * time.Millisecond)
-
-		case phMain:
-			switch key {
-			case "1":
-				m.ph = phReserve
-				m.input.SetValue("")
-				m.inputErr = ""
-				return m, m.input.Focus()
-			case "2":
-				m.stopTimer()
-			case "3", "esc":
-				return m, tea.Quit
-			}
-			return m, nil
-
-		case phReserve:
-			switch key {
-			case "esc":
-				m.ph = phMain
-				return m, nil
-			case "enter":
-				mins := parseMin(m.input.Value())
-				switch {
-				case mins < 0:
-					m.inputErr = "잘못된 입력."
-					m.input.SetValue("")
-				case mins == 0:
-					m.ph = phMain
-				default:
-					m.setTimer(mins * 60)
-					m.ph = phMain
-				}
-				return m, nil
-			}
-			m.inputErr = ""
-			var cmd tea.Cmd
-			m.input, cmd = m.input.Update(msg)
-			return m, cmd
+			m.ph = phHome
+			return m, tick(250 * time.Millisecond)
+		case phHome:
+			return m.homeKey(msg)
 		}
 	}
 
-	// 깜박임 등 textinput 내부 메시지
-	if m.ph == phReserve {
+	if m.ph == phApp && m.app != nil {
 		var cmd tea.Cmd
-		m.input, cmd = m.input.Update(msg)
+		m.app, cmd = m.app.Update(msg)
 		return m, cmd
 	}
 	return m, nil
 }
 
+func (m model) homeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	key := msg.String()
+	switch key {
+	case "up", "k":
+		if m.sel > 0 {
+			m.sel--
+		}
+	case "down", "j":
+		if m.sel < len(registry)-1 {
+			m.sel++
+		}
+	case "enter":
+		return m.openApp(m.sel)
+	case "esc", "q":
+		return m, tea.Quit
+	default:
+		if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
+			return m.openApp(int(key[0] - '1'))
+		}
+	}
+	return m, nil
+}
+
 func (m model) View() string {
+	c := m.ctx()
 	switch m.ph {
 	case phIntro:
 		return m.viewIntro()
-	case phReserve:
-		return m.viewReserve()
+	case phApp:
+		if m.app != nil {
+			return c.Place(m.app.View(c))
+		}
 	}
-	return m.viewMain()
+	return c.Place(m.viewHome(c))
 }
 
 func main() {

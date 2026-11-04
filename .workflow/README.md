@@ -26,7 +26,7 @@ Mode: **lite**
 | UI | 6 | [Mid-fi wireframe](06-wireframe/index.html) | done | `/wf-wireframe` |
 | UI | 7 | [Wireframe review](07-wireframe-review.md) | skipped (lite) | `/wf-wireframe-review` |
 | Development | 8 | [Tech design](08-tech.md) | skipped (lite) | `/wf-tech` |
-| Development | 9 | [Prototype](09-prototype.md) | not started ◀ now | `/wf-prototype` |
+| Development | 9 | [Prototype](09-prototype.md) | in progress ◀ now | `/wf-prototype` |
 | Development | 10 | [Usability test](10-usability.md) | not started | `/wf-usability` |
 | Development | 11 | [Hardening & verification](11-hardening.md) | not started | `/wf-hardening` |
 | Release | 12 | [Pre-release](12-prerelease.md) | skipped (lite) | `/wf-prerelease` |
