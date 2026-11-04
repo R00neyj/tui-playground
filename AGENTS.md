@@ -46,5 +46,6 @@ go build -ldflags "-s -w" -o TUI-playground.exe .
 
 ## 작업 규칙
 
-- 사용자가 요청하기 전에는 커밋하지 않음
+- vibe-workflow 단계(`.workflow/`)가 끝날 때마다 커밋함. 그 외에는 사용자가 요청할 때만 커밋함. 기본 브랜치는 `main`
+- UI work: read DESIGN.md first; use only its tokens and components, and log new ones there.
 - 응답과 문서는 한국어로 작성함

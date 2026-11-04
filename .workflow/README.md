@@ -22,8 +22,8 @@ Mode: **lite**
 | Planning | 2 | [Feature spec](02-spec.md) | done | `/wf-spec` |
 | UX | 3 | [UX flowchart](03-flow.md) | done | `/wf-flow` |
 | UI | 4 | [UI references](04-references.md) | skipped (lite) | `/wf-references` |
-| UI | 5 | [Design system (DESIGN.md)](../DESIGN.md) | not started ◀ now | `/wf-design` |
-| UI | 6 | [Mid-fi wireframe](06-wireframe/index.html) | not started | `/wf-wireframe` |
+| UI | 5 | [Design system (DESIGN.md)](../DESIGN.md) | done | `/wf-design` |
+| UI | 6 | [Mid-fi wireframe](06-wireframe/index.html) | not started ◀ now | `/wf-wireframe` |
 | UI | 7 | [Wireframe review](07-wireframe-review.md) | skipped (lite) | `/wf-wireframe-review` |
 | Development | 8 | [Tech design](08-tech.md) | skipped (lite) | `/wf-tech` |
 | Development | 9 | [Prototype](09-prototype.md) | not started | `/wf-prototype` |
@@ -33,7 +33,7 @@ Mode: **lite**
 | Release | 13 | [Internal test](13-internal-test.md) | skipped (lite) | `/wf-internal-test` |
 | Release | 14 | [Release](14-release.md) | not started | `/wf-release` |
 
-Next up: **5. Design system (DESIGN.md)** → `/wf-design`
+Next up: **6. Mid-fi wireframe** → `/wf-wireframe`
 <!-- wf:index:end -->
 
 ## Decision log
@@ -47,6 +47,7 @@ Add one line each time a stage ends or the direction changes. Link the supportin
 | 2026-11-05 | 2 | 기능 6개 확정(Must 5, Should 1). 두 번째 앱은 포모도로, 핵심은 F-01·F-02·F-04, macOS/Linux는 Should | [기능 명세](02-spec.md) |
 | 2026-11-05 | 3 | 화면 7개 확정. 포모도로는 25/5 기본값 대기 화면으로 진입, 진행 중 Esc는 확인, 홈 목록에 종료 타이머 예약 상태 표시(F-01·F-04 명세에 한 줄씩 반영) | [UX 플로차트](03-flow.md) |
 | 2026-11-05 | - | 작업 규칙: 각 단계가 끝나면 커밋함. 기본 브랜치는 main | - |
+| 2026-11-05 | 5 | 디자인 시스템 확정: 현재 화면 유지(강조 cyan, 둥근 박스, 넓은 여백). 대비 4.5 미달인 힌트 글자·`대기` 배지는 9단계에서 수정 | [DESIGN.md](../DESIGN.md) |
 
 ## Open questions
 

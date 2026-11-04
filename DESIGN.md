@@ -1,0 +1,115 @@
+# 11_shutdown_timer — Design system
+
+[← Hub](.workflow/README.md) · Prev: [3. UX flowchart](.workflow/03-flow.md) · Next: [6. Mid-fi wireframe](.workflow/06-wireframe/index.html)
+
+Created: 2026-11-05
+
+<!-- wf:design
+status: done
+-->
+
+> The single source of truth for UI. Read it before any UI work or UI fix. Add a token or component here before using it.
+> Source: 현재 종료 타이머 화면(코드)을 기준으로 정리함. 레퍼런스 단계는 lite 모드라서 건너뜀.
+> Done when: tokens and core components are defined and the user approved → `status: done`. It keeps changing after that; log every change.
+
+## At a glance
+
+- 터미널(TUI) 앱이라 값의 단위는 px 가 아니라 "칸(cell)"이고, 색은 ANSI 16색 번호를 씀 (글꼴은 사용자 터미널이 정함)
+- 강조색 = 밝은 cyan, 시간 단계 상태색 = 초록/노랑/빨강, 보조 글자 = 회색 두 단계
+- 둥근 모서리 박스 하나 안에 모든 화면을 담음 (넓은 여백)
+
+## Principles
+
+- 색마다 역할이 하나: 강조(조작·제목) / 상태(PC 종료까지 남은 시간) / 회색(보조)
+- 상태는 색에만 의존하지 않고 글자(배지)로도 표시함
+- 박스는 한 겹만 쓰고, 도움말 키는 항상 하단 한 곳에 모음
+- 빨강은 "PC가 곧 꺼짐"에만 씀. 포모도로에는 쓰지 않음
+
+## Tokens
+
+Code uses these names, never raw values. 값은 ANSI 16색 번호이고 실제 색은 터미널 테마를 따름.
+
+### Color
+
+대비 값은 Windows Terminal 기본 테마(Campbell, 배경 `#0C0C0C`) 기준 계산값임. 다른 테마에서는 달라짐.
+
+| Token | ANSI | Use | 대비(배경 기준) |
+| --- | --- | --- | --- |
+| color.text | 15 | 본문, 값(시각·남은 시간) | 17.5 |
+| color.text-muted | 7 | 도움말, 보조 설명, 비활성 메뉴 | 12.2 |
+| color.text-faint | 8 | 테두리, 구분선, 진행률 막대의 빈 칸 (글자에는 쓰지 않음) | 4.3 |
+| color.accent | 14 | 제목, 키 번호, 입력 프롬프트 | 11.3 |
+| color.ok | 10 | 남은 시간 10분 초과, 성공 메시지, 포모도로 휴식 | 8.5 |
+| color.warn | 11 | 남은 시간 10분 이하, 경고 메시지 | 16.9 |
+| color.danger | 9 | 남은 시간 1분 이하, 오류 메시지 | 5.1 |
+| color.on-state | 0 | 상태색 배경 위 글자 (배지) | 5.1 이상 |
+
+### Typography
+
+| Token | Value | Use |
+| --- | --- | --- |
+| font.family | 사용자 터미널 글꼴 (고정폭) | 앱이 바꿀 수 없음 |
+| text.title | color.accent | 화면 제목 |
+| text.body | color.text | 값, 메뉴 이름 |
+| text.caption | color.text-muted | 힌트, 보조 설명 |
+| text.digits | `█` 2칸 × 3×5 격자, 글자 사이 2칸 | 남은 시간 큰 숫자 (폭 ≥ 60, 높이 ≥ 21 일 때만) |
+
+한글은 2칸 폭으로 계산함. 폭 계산은 항상 `lipgloss.Width` 를 씀.
+
+### Spacing · border · motion
+
+| Token | Value |
+| --- | --- |
+| space.1 / 2 | 1칸 / 2칸 (박스 안쪽 왼쪽 여백 2칸, 오른쪽 여백 2칸) |
+| space.row | 섹션 사이에 빈 줄 1개 |
+| box.width | 안쪽 폭 = 창 폭 − 6, 최소 50 ~ 최대 72. 가운데 정렬 |
+| border.style | 둥근: `╭ ╮ ╰ ╯`, 가로 `─`, 세로 `│`, 구분선 `├ ┤` |
+| progress.glyph | 채움 `━`(상태색), 빈 칸 `━`(color.text-faint), 끝에 ` NNN%` |
+| breakpoint.big | 폭 ≥ 60 그리고 높이 ≥ 21 이면 큰 숫자, 아니면 한 줄 숫자 |
+| motion.tick | 250ms (화면 갱신, 시계는 1초 단위) |
+| motion.intro | 2350ms, 아무 키나 누르면 건너뜀 |
+
+## Components
+
+| Component | Purpose | Variants | States | Tokens | Screens |
+| --- | --- | --- | --- | --- | --- |
+| Frame | 모든 화면의 박스 (머리줄 / 본문 / 키 안내 / 메시지) | 메인, 입력 | 기본 | border.style, color.text-faint | 전체 |
+| Header | 앱 이름(왼쪽)과 현재 시각(오른쪽) | - | 기본 | text.title, color.text-faint | home, timer-main, pomo-main |
+| Badge | 현재 상태 글자 | 예약됨, 대기, 집중, 휴식, 일시정지 | 상태색 배경 + color.on-state 글자 (대기·일시정지는 color.text-muted 배경) | color.ok/warn/danger/accent, color.on-state | timer-main, pomo-main |
+| Big digits | 남은 시간 | 큰 숫자, 한 줄 | 시간 단계별 색 | text.digits, 상태색 | timer-main, pomo-main |
+| Progress bar | 경과 비율 | - | 0~100% | progress.glyph, 상태색 | timer-main, pomo-main |
+| Menu row | `[키] 이름  힌트` 한 줄 | 활성, 비활성 | 비활성이면 이름이 color.text-muted | color.accent(키), text.body, text.caption | timer-main, pomo-main |
+| List item | 홈의 앱 한 줄 (이름, 설명, 상태 접미) | 선택, 일반 | 선택 시 `▸` 표시와 color.accent 이름. 종료 타이머 예약 중이면 접미에 상태색으로 남은 시간 | color.accent, text.body, text.caption | home |
+| Input | 한 줄 입력 | - | 기본 / 오류(아래 줄에 color.danger 문구) | color.accent(프롬프트), color.danger | timer-new, pomo-setup |
+| Message line | 하단 한 줄 안내 | 정보, 성공, 경고, 오류 | 비어 있으면 빈 줄 | color.text-muted, ok, warn, danger | home, timer-main, pomo-main |
+| Confirm | 되돌릴 수 없는 동작 확인 | - | `y` / `n` | color.warn(문구), color.accent(키) | pomo-leave |
+| Intro | 시작 화면 | - | 로고 → 부제목 → 로딩 막대 → 준비 완료 | color.accent, color.ok, color.text-faint | intro |
+
+## Patterns
+
+- Layout grid: 박스 하나를 화면 가운데에 두고, 위에서부터 머리줄 → 상태 → 값(큰 숫자) → 진행률 → 키 안내 → 메시지 순서
+- Empty / loading / error states: 비어 있음은 한 줄 문구(예: "등록된 앱 없음"), 오류는 해당 위치 아래 줄에 color.danger 로 표시
+- Forms: 입력은 박스 아래에 프롬프트 한 줄. 잘못된 입력은 같은 화면에 남고 안내만 바뀜. `0`/Esc 는 뒤로
+
+## Avoid
+
+- 글자에 color.text-faint(8) 쓰기: 대비가 4.3 이라 4.5 에 못 미침. 현재 코드의 일부 힌트 문구가 이 색을 쓰고 있어 9단계에서 text-muted 로 바꿈
+- `대기` 배지를 흰 글자 + 회색(8) 배경으로 쓰기: 대비 4.1. 회색(7) 배경 + 검정 글자로 바꿈
+- 이모지, 장식용 아이콘, 상태를 색으로만 구분하기
+- 박스 안에 박스를 중첩하기, 장식용 선
+- 빨강을 포모도로 같은 "PC 종료와 무관한" 상태에 쓰기
+
+### Deliberate exceptions
+
+| Pattern | Why it fits this product |
+| --- | --- |
+| 인트로 로고의 파랑→cyan→흰색 그라데이션 | 시작 화면 2초에만 나오고 건너뛸 수 있음. 터미널 장난감 느낌을 주는 첫인상용이고 ANSI 색만 씀 |
+| 인트로 부제목의 글자 간격 | 인트로에서만 쓰는 타이핑 효과. 본 화면에는 쓰지 않음 |
+| 테두리 박스와 구분선 | 터미널에서 영역을 나누는 거의 유일한 수단임. 한 겹만 쓰고 구분선은 머리줄·키 안내·메시지 구획에만 씀 |
+| 키 번호 `[1] [2] [3]` | 장식 번호가 아니라 실제로 누르는 키임 |
+
+## Change log
+
+| Date | Change | Why |
+| --- | --- | --- |
+| 2026-11-05 | created | 현재 코드의 색·박스·여백 값을 토큰으로 정리하고 홈 목록·확인 문구 컴포넌트를 추가 |
