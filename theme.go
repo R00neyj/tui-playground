@@ -46,3 +46,13 @@ func toneColor(t Tone) lipgloss.Color {
 	}
 	return colorTextMuted
 }
+
+// 디스크 사용량 트리맵 전용 범주색 (배경으로 쓰고 위에 colorOnState 글자를 올림)
+var (
+	colorViz1 = lipgloss.Color("12")
+	colorViz2 = lipgloss.Color("13")
+	colorViz3 = lipgloss.Color("14")
+	colorViz4 = lipgloss.Color("10")
+	colorViz5 = lipgloss.Color("11")
+	colorViz6 = lipgloss.Color("6")
+)
