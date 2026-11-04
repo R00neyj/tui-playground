@@ -11,4 +11,5 @@ var registry = []AppInfo{
 	codexUsageInfo,
 	todoInfo,
 	diskInfo,
+	browserInfo,
 }

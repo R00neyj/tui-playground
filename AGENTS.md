@@ -25,6 +25,8 @@ go build -ldflags "-s -w" -o TUI-playground.exe .
 | `intro.go` | 인트로 애니메이션 (로고, 부제목 타이핑, 로딩 막대) |
 | `grid.go` `screen.go` | 화면을 칸 격자로 다루는 도구(색 입힌 문자열 ↔ 칸), 홈 합성(배경 + 박스 + 조작부) |
 | `bg.go` `transition.go` `arcade.go` | 홈 배경 5종, 화면 전환 4종, 아케이드 조작부 |
+| `app_diskusage.go` | 디스크 사용량 트리맵 앱(읽기 전용, 폴더 스캔 + squarified 배치) |
+| `app_browser.go` `browser_parse.go` | 텍스트 웹 브라우저 앱(내려받기, 문자 코드 변환, 본문 추출, 줄바꿈, 제어문자 제거). 의존: golang.org/x/net, x/text |
 | `settings.go` | 홈 설정(배경·전환·조작부) 저장과 설정 화면. 저장 위치는 사용자 설정 폴더의 `TUI-playground/settings.json` |
 | `main_test.go` | 파싱, 예약 로직, 화면 정렬, 동기화 테스트 |
 | `shutdown.bat` | 예전 PowerShell 버전. 더 이상 개발하지 않고 그대로 보관함 |
@@ -53,3 +55,5 @@ go build -ldflags "-s -w" -o TUI-playground.exe .
 - UI work: read DESIGN.md first; use only its tokens and components, and log new ones there.
 - 응답과 문서는 한국어로 작성함
 - 홈 배경·전환은 터미널이 색을 지원할 때만 켜짐(`TUI_ANIM=off` 로 끌 수 있음). 테스트는 `forceProfile` 로 색 모드를 바꿔 끼우고, `TestMain` 이 설정 파일 경로를 임시 폴더로 돌려놓음
+- 앱 테스트는 실제 네트워크와 실제 드라이브를 건드리지 않음 (`brWithFetch`, `scanTree` 를 가짜로 바꿔 끼움)
+- 이 세션 같은 환경에서 `NO_COLOR` 가 켜져 있으면 배경·전환이 꺼짐. 눈으로 확인할 때는 `set NO_COLOR=` 로 지우고 실행할 것

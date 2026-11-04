@@ -56,3 +56,6 @@ var (
 	colorViz5 = lipgloss.Color("11")
 	colorViz6 = lipgloss.Color("6")
 )
+
+// 선택된 칸 바탕 (트리맵 등). 흰색은 눈부시고 검정은 선택 안 된 것처럼 보여서 짙은 파랑을 씀
+var colorSelect = lipgloss.Color("4")
