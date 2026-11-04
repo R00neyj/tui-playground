@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "test": {
+      "enabled": false,
+      "command": ""
+    },
+    "build": {
+      "enabled": false,
+      "command": ""
+    },
+    "lint": {
+      "enabled": false,
+      "command": ""
+    },
+    "typecheck": {
+      "enabled": false,
+      "command": ""
+    }
+  },
+  "mode": "lite",
+  "run": "",
+  "deploy": {
+    "prerelease": "",
+    "release": ""
+  }
+}
