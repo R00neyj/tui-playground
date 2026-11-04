@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>애니메이션 예시 — 터미널 플레이그라운드</title>
+<style>
+  :root { --font: "Cascadia Mono", "D2Coding", Consolas, "Malgun Gothic", monospace; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #14161a; color: #d8dbe0; font: 15px/1.55 system-ui, "Malgun Gothic", sans-serif; }
+  header { padding: 22px 32px 10px; border-bottom: 1px solid #2a2e36; position: sticky; top: 0; background: #14161aee; backdrop-filter: blur(6px); z-index: 5; }
+  h1 { margin: 0 0 6px; font-size: 20px; }
+  h2 { margin: 36px 32px 6px; font-size: 17px; }
+  p.lead { margin: 0; color: #9aa1ad; }
+  .controls { display: flex; gap: 18px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  .controls label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .note { color: #9aa1ad; font-size: 13px; margin: 0 32px 14px; max-width: 980px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(540px, 1fr)); gap: 22px; padding: 10px 32px 10px; }
+  figure { margin: 0; background: #0c0c0c; border: 1px solid #2a2e36; border-radius: 10px; overflow: hidden; }
+  figure canvas { display: block; width: 100%; height: auto; image-rendering: auto; }
+  figcaption { padding: 10px 14px 12px; border-top: 1px solid #2a2e36; background: #181b20; }
+  figcaption b { display: inline-block; min-width: 1.6em; padding: 0 7px; margin-right: 8px; border-radius: 5px; background: #3a7bd5; color: #fff; text-align: center; }
+  figcaption span { color: #9aa1ad; font-size: 13px; display: block; margin-top: 3px; }
+  footer { padding: 28px 32px 60px; color: #9aa1ad; }
+</style>
+</head>
+<body>
+<header>
+  <h1>애니메이션 예시 고르기</h1>
+  <p class="lead">아래 영상은 실제 터미널 화면을 흉내 낸 미리보기임. 마음에 드는 <b>배경 A~H</b>와 <b>전환 1~4</b>의 글자를 알려주면 됨 (예: "배경 F, 전환 3"). F·G 는 디졸브 느낌, H 는 보내준 이미지 느낌의 새 안임.</p>
+  <div class="controls">
+    <label><input type="radio" name="mode" value="true" checked> 트루컬러(24비트) 터미널</label>
+    <label><input type="radio" name="mode" value="16"> 16색 터미널 (자동 대체 모습)</label>
+    <label><input type="checkbox" id="paused"> 일시정지</label>
+  </div>
+</header>
+
+<h2>홈 화면 배경</h2>
+<p class="note">홈 박스 뒤 전체 화면에 깔리는 움직이는 배경임. 박스 안쪽은 불투명해서 글자는 그대로 읽힘.</p>
+<div class="grid" id="bgGrid"></div>
+
+<h2>화면 전환 (홈 → 종료 타이머 → 홈 …)</h2>
+<p class="note">홈에서 앱을 열거나 Esc 로 돌아올 때 약 0.7초 동안 재생됨. 키를 누르면 바로 끝나게 할 수 있음.</p>
+<div class="grid" id="trGrid"></div>
+
+<footer>
+  16색 모드는 그라데이션을 쓸 수 없어서 계단처럼 보임. 트루컬러를 지원하지 않는 터미널에서는 이 모습으로 자동 대체함. 실제 터미널에서는 화면을 다시 그리는 속도(초당 약 30회)와 글꼴에 따라 조금 다르게 보일 수 있음.
+</footer>
+
+<script>
+// ======================= 기본 도구 =======================
+const W = 96, H = 30, CW = 8, CH = 16;
+const params = new URLSearchParams(location.search);
+if (params.get('only') === 'bg') document.addEventListener('DOMContentLoaded', () => document.querySelectorAll('#trGrid, h2:nth-of-type(2), p.note:nth-of-type(2)').forEach(e => e.style.display = 'none'));
+if (params.get('only') === 'tr') document.addEventListener('DOMContentLoaded', () => document.querySelectorAll('#bgGrid').forEach(e => e.style.display = 'none'));
+const FREEZE = params.has('freeze') ? parseFloat(params.get('freeze')) : null;
+let mode16 = false;
+
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const frac = v => v - Math.floor(v);
+const hash = (x, y = 0, z = 0) => { let h = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return h - Math.floor(h); };
+const ease = u => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+const mix = (c1, c2, t) => [lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t)];
+const scale = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
+function gradient(stops, v) {
+  v = clamp(v) * (stops.length - 1);
+  const i = Math.min(stops.length - 2, Math.floor(v));
+  return mix(stops[i], stops[i + 1], v - i);
+}
+const PAL16 = [[12,12,12],[197,15,31],[19,161,14],[193,156,0],[0,55,218],[136,23,152],[58,150,221],[204,204,204],[118,118,118],[231,72,86],[22,198,12],[249,241,165],[59,120,255],[180,0,158],[97,214,214],[242,242,242]];
+function q16(c) {
+  let best = 0, bd = 1e9;
+  for (let i = 0; i < 16; i++) {
+    const p = PAL16[i], d = (p[0]-c[0])**2 + (p[1]-c[1])**2 + (p[2]-c[2])**2;
+    if (d < bd) { bd = d; best = i; }
+  }
+  return PAL16[best];
+}
+const rgb = c => `rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
+
+// 격자: 칸마다 글자, 글자색, 배경색
+function newGrid() {
+  const n = W * H;
+  return { ch: new Array(n).fill(' '), fg: new Array(n).fill(null), bg: new Array(n).fill(null) };
+}
+const idx = (x, y) => y * W + x;
+function set(g, x, y, ch, fg, bg) {
+  if (x < 0 || y < 0 || x >= W || y >= H) return;
+  const i = idx(x, y);
+  g.ch[i] = ch; if (fg) g.fg[i] = fg; if (bg) g.bg[i] = bg;
+}
+const isWide = ch => { const c = ch.codePointAt(0); return (c >= 0x1100 && c <= 0x11ff) || (c >= 0x3130 && c <= 0x318f) || (c >= 0xac00 && c <= 0xd7a3); };
+function put(g, x, y, str, fg, bg) {
+  for (const ch of str) {
+    set(g, x, y, ch, fg, bg);
+    if (isWide(ch)) { set(g, x + 1, y, '', fg, bg); x += 2; } else x += 1;
+  }
+}
+function fillRect(g, x0, y0, w, h, bg) {
+  for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) set(g, x, y, ' ', null, bg);
+}
+const FAINT = [118,118,118], MUTED = [204,204,204], TEXT = [242,242,242], ACCENT = [97,214,214], OK = [22,198,12], PANEL = [12,12,12];
+function box(g, x0, y0, w, h) {
+  fillRect(g, x0, y0, w, h, PANEL);
+  put(g, x0, y0, '╭' + '─'.repeat(w - 2) + '╮', FAINT, PANEL);
+  put(g, x0, y0 + h - 1, '╰' + '─'.repeat(w - 2) + '╯', FAINT, PANEL);
+  for (let y = y0 + 1; y < y0 + h - 1; y++) { put(g, x0, y, '│', FAINT, PANEL); put(g, x0 + w - 1, y, '│', FAINT, PANEL); }
+}
+function hline(g, x0, y, w) { put(g, x0, y, '├' + '─'.repeat(w - 2) + '┤', FAINT, PANEL); }
+
+// ======================= 배경 5종 =======================
+const BG = {
+  A: { name: '오로라', desc: '파랑·청록·보라 빛이 천천히 일렁이는 부드러운 그라데이션. 가장 차분하고 눈에 덜 띔' },
+  B: { name: '별빛', desc: '깜박이는 별과 가끔 지나가는 유성. 어두운 밤하늘 느낌' },
+  C: { name: '디지털 비', desc: '위에서 떨어지는 문자 줄기(매트릭스풍). 가장 "터미널다운" 모습' },
+  D: { name: '파도', desc: '겹겹의 파도가 밀려오는 물결. 아래에서 위로 층층이 일렁임' },
+  E: { name: '레트로 격자', desc: '네온 해와 앞으로 달려오는 격자(신스웨이브). 가장 화려하고 눈에 띔' },
+  F: { name: '디졸브 모자이크', desc: '전환 3번의 질감을 배경으로: 칸들이 제각각 다른 박자로 반짝이며 색이 바뀌는 은은한 모자이크. 한 칸이 바뀔 때마다 작은 반짝임이 스침' },
+  H: { name: '디더링 행성 + 별가루 (omp.sh 방식)', desc: 'omp.sh 의 그리기 방식을 따름: 림에서 안쪽으로 점 밀도가 지수로 줄고(하늘색→분홍→짙은 보라), 림에 붙은 흰 별가루가 호를 따라 천천히 흐르며 반짝임. 림에는 밝기 띠가 흐르고 전체에 필름 입자 노이즈가 깔림' },
+  G: { name: '디졸브 테마 전환', desc: '전환 3번을 배경 전체로: 푸른 오로라 색 ↔ 보라·주황 색이 칸 단위로 반짝이며 번갈아 녹아들어 바뀜(약 8초 주기). 흐르는 물결 위에 디졸브가 계속 지나감' },
+};
+// 행성 (omp.sh 번들의 정적 렌더링 알고리즘을 점 격자에 맞춰 옮김)
+// - 화면 밖 오른쪽 아래에 있는 아주 큰 원. 림(테두리)에서 안쪽으로 들어간 깊이 l 에 따라 점이 찍힐 확률이 지수로 줄어듦
+// - 점 색: 림 하늘색 → 보라(분홍) → 짙은 보라, 세 단계의 감쇠 길이는 각각 0.7 / 6 / 30 점 (원본 14/120/600px 를 1920px 폭 기준 1/20 로 줄임)
+// - 바깥은 흰 별가루: 림에 바짝 붙어 있고 꼬리가 길게 빠짐. 호를 따라 천천히 흐르고 반짝임
+const PL = (() => {
+  const A = [W * 0.27, H * 2], B = [W, H * 2 * 0.27], R = W * 0.95;
+  const M = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2], vx = B[0] - A[0], vy = B[1] - A[1], c = Math.hypot(vx, vy);
+  const h = Math.sqrt(R * R - c * c / 4), nx = vy / c, ny = -vx / c;   // 중심은 코드 아래쪽(오른쪽 아래)
+  const sg = ny > 0 ? 1 : -1;
+  return { cx: M[0] + sg * nx * h, cy: M[1] + sg * ny * h, R };
+})();
+const C_RIM = [140, 160, 255], C_NEAR = [246, 92, 182], C_FAR = [150, 34, 112], C_BLACK = [9, 9, 11];
+function planetPix(px, py, t) {
+  const dx = px - PL.cx, dy = py - PL.cy, dist = Math.hypot(dx, dy), l = PL.R - dist;
+  const ang = Math.atan2(dy, dx);
+  const gx = px - W / 2, gy = py - H, vig = Math.max(0.2, 1 - (Math.hypot(gx, gy) / (W * 0.85)) ** 3);
+  if (l >= 0) {
+    const band = 1 + 0.16 * Math.sin(ang * 13 - t * 1.1);                       // 림을 따라 밝기 띠가 흐름
+    if (l < 1.3) return scale(C_RIM, vig * band);
+    const tt = Math.exp(-l / 0.7);
+    const aa = Math.exp(-l / 6) * Math.min(1, l / 0.6) * 0.85;
+    const oo = Math.exp(-l / 30) * Math.min(1, l / 1.5) * 0.7;
+    const cc = Math.min(1, tt + aa + oo);
+    const seed = hash(px, py, 3) < 0.14 ? Math.floor(t * 3) : 0;                 // 일부 점만 가끔 다시 뽑힘 (자글거림)
+    const r = hash(px, py, 9 + seed);
+    if (r < tt) return scale(C_RIM, vig * band);
+    if (r < tt + aa) return scale(C_NEAR, vig * band * (0.8 + 0.2 * hash(px, py, 4)));
+    if (r < cc) return scale(C_FAR, vig * (0.75 + 0.25 * hash(px, py, 5)));
+    return null;
+  }
+  const o = -l;
+  const s2 = Math.floor(ang * PL.R * 0.5 + t * 2.4), o2 = Math.floor(o);         // 호를 따라 천천히 흐름
+  const pd = 0.7 * Math.exp(-o / 2.4) + 0.16 * Math.exp(-o / 10) + 0.02 * Math.exp(-o / 34);
+  const h = hash(s2, o2, 5);
+  if (h < pd) {
+    const tw = 0.6 + 0.4 * Math.sin(t * 2.6 + h * 200);
+    return scale([250, 250, 252], (0.3 + 0.7 * hash(s2, o2, 6)) * tw * vig);
+  }
+  if (o < 2.2) return scale([100, 120, 255], (1 - o / 2.2) * 0.45 * vig);        // 림 바깥 번짐
+  return null;
+}
+function bgCell(kind, x, y, t) {
+  switch (kind) {
+    case 'A': {
+      const v = (Math.sin(x * 0.09 + t * 0.7) + Math.sin(y * 0.30 - t * 0.5) + Math.sin(x * 0.05 + y * 0.18 + t * 0.4)
+        + Math.sin(Math.sqrt(((x - W / 2) * 0.5) ** 2 + (y - H / 2) ** 2 * 1.6) * 0.38 - t * 0.9)) / 4;
+      const n = (v + 1) / 2;
+      const c = gradient([[8,10,30],[10,44,100],[18,128,150],[96,64,170],[24,22,70]], n);
+      const tex = n > 0.72 ? '░' : ' ';
+      return [tex, scale(c, 1.25), scale(c, 0.8)];
+    }
+    case 'B': {
+      const base = scale(mix([6,8,22],[16,10,40], y / H), 1);
+      const h = hash(x, y);
+      let ch = ' ', fg = null;
+      if (h < 0.045) {
+        const tw = 0.5 + 0.5 * Math.sin(t * (1.2 + h * 40) + h * 90);
+        ch = tw > 0.85 ? '✦' : tw > 0.55 ? '*' : tw > 0.3 ? '•' : '·';
+        fg = scale([200,215,255], 0.35 + 0.65 * tw);
+      }
+      // 유성
+      const ph = frac(t / 5.5);
+      if (ph < 0.35) {
+        const p = ph / 0.35, hx = -6 + p * (W + 12), hy = -2 + p * (H * 0.9);
+        const d = Math.hypot((x - hx) / 2, y - hy);
+        const along = (hx - x) / 2;
+        if (along > 0 && along < 9 && Math.abs((hy - y) - (hx - x) / 2 * 0.55) < 0.7) { ch = '─'; fg = scale([255,255,255], 1 - along / 9); }
+        if (d < 0.9) { ch = '✦'; fg = [255,255,255]; }
+      }
+      return [ch, fg || FAINT, base];
+    }
+    case 'C': {
+      const col = x, sp = 5 + hash(col, 1) * 9, off = hash(col, 2) * 100, trail = 8 + Math.floor(hash(col, 3) * 10);
+      const head = (t * sp + off) % (H + trail);
+      const d = head - y;
+      let ch = ' ', fg = null;
+      if (d >= 0 && d < trail) {
+        const k = 1 - d / trail;
+        const glyphs = '0123456789ABCDEF:<>=+*';
+        ch = glyphs[Math.floor(hash(x, y, Math.floor(t * 7 + d)) * glyphs.length)];
+        fg = d < 1 ? [190,255,240] : scale([30,200,120], 0.15 + 0.55 * k);
+      }
+      return [ch, fg || FAINT, [2,10,8]];
+    }
+    case 'D': {
+      const sky = mix([8,14,40],[20,34,80], y / H);
+      let ch = ' ', fg = null, bg = sky;
+      const layers = [
+        { f: 0.11, s: 1.1, a: 0.45, base: 0.30, c: [20,80,160] },
+        { f: 0.17, s: -1.4, a: 0.35, base: 0.20, c: [24,130,170] },
+        { f: 0.23, s: 1.9, a: 0.28, base: 0.10, c: [90,200,200] },
+      ];
+      for (const L of layers) {
+        const hgt = (L.base + L.a * (0.5 + 0.5 * Math.sin(x * L.f + t * L.s + L.f * 7))) * H;
+        const fromBottom = H - 1 - y;
+        if (fromBottom + 1 <= hgt) { ch = '█'; fg = scale(L.c, 0.9); bg = scale(L.c, 0.55); }
+        else if (fromBottom < hgt) {
+          const part = hgt - fromBottom;
+          ch = '▁▂▃▄▅▆▇'[Math.min(6, Math.floor(part * 7))]; fg = scale(L.c, 1.0); bg = bg;
+        }
+      }
+      return [ch, fg || FAINT, bg];
+    }
+    case 'H': {
+      const g = (v, k) => { const n = (hash(x, k, 21) - 0.5) * 0.09 * 255; return v ? [v[0] + n, v[1] + n, v[2] + n] : [C_BLACK[0] + n * 0.4, C_BLACK[1] + n * 0.4, C_BLACK[2] + n * 0.4]; };
+      return ['▄', g(planetPix(x, 2 * y + 1, t), 2 * y + 1 + 0.5), g(planetPix(x, 2 * y, t), 2 * y)];
+    }
+    case 'F': {
+      const bx = x >> 1;
+      const h = hash(bx, y, 11);
+      const T = 3.2 + h * 5.5;
+      const ph = t / T + h * 7;
+      const lvl = Math.floor(ph), fr = ph - lvl;
+      const pal = [[8,22,56],[10,40,84],[14,70,100],[30,44,100],[58,36,92],[12,28,60]];
+      const cur = pal[Math.floor(hash(bx, y, lvl) * pal.length)];
+      const prev = pal[Math.floor(hash(bx, y, lvl - 1) * pal.length)];
+      // 새 색으로 바뀌는 순간(앞 12%)에 한 번 반짝이며 교체됨
+      let bg = fr < 0.12 ? mix(scale([150,230,240], 0.55), cur, fr / 0.12) : cur;
+      let ch = ' ', fg = null;
+      if (fr < 0.07) { ch = hash(x, y, lvl) > 0.5 ? '✦' : '+'; fg = scale([220,250,255], 1 - fr / 0.07 * 0.4); }
+      return [ch, fg || FAINT, scale(bg, 1.1)];
+    }
+    case 'G': {
+      const CYC = 8;
+      const cyc = Math.floor(t / CYC), s = (t / CYC) - cyc;
+      const th = s * 1.35 - 0.12;
+      const ex = x >> 1;
+      const n = hash(ex, y, 5) * 0.8 + 0.2 * (y / H);
+      const themeA = [[8,10,30],[10,44,100],[18,128,150],[96,64,170],[24,22,70]];
+      const themeB = [[22,6,36],[84,14,92],[170,40,120],[238,118,98],[72,20,72]];
+      const v = (Math.sin(x * 0.09 + t * 0.7) + Math.sin(y * 0.30 - t * 0.5) + Math.sin(x * 0.05 + y * 0.18 + t * 0.4)
+        + Math.sin(Math.sqrt(((x - W / 2) * 0.5) ** 2 + (y - H / 2) ** 2 * 1.6) * 0.38 - t * 0.9)) / 4;
+      const k = (v + 1) / 2;
+      const flipped = n < th;
+      const themeIsB = ((cyc + (flipped ? 1 : 0)) % 2) === 1;
+      const c = gradient(themeIsB ? themeB : themeA, k);
+      let ch = ' ', fg = null;
+      const d = n - th;
+      if (s > 0.02 && s < 0.98 && Math.abs(d) < 0.05) { ch = hash(x, y, Math.floor(t * 6)) > 0.45 ? '✦' : '+'; fg = scale([235,250,255], 1 - Math.abs(d) / 0.05 * 0.5); }
+      return [ch, fg || FAINT, scale(c, 0.85)];
+    }
+    case 'E': {
+      const yh = Math.floor(H * 0.52);
+      if (y < yh) {
+        const k = y / yh;
+        let c = gradient([[14,4,40],[70,10,90],[160,30,120],[250,90,110]], k);
+        let ch = ' ', fg = null;
+        // 해
+        const dx = (x - W / 2) / 2, dy = y - (yh - 6);
+        const r = Math.hypot(dx, dy);
+        if (r < 6.2 && y < yh) {
+          const stripe = (y - (yh - 12)) / 12;
+          const gap = stripe > 0.45 && Math.sin((y + t * 1.5) * 2.6) > (1 - stripe) * 1.6 - 0.4;
+          if (!gap) c = gradient([[255,230,90],[255,120,120],[220,40,170]], stripe + 0.1);
+        }
+        return [ch, fg || FAINT, c];
+      }
+      const p = (y - yh + 0.5) / (H - yh);
+      const z = 1 / p;
+      let col = [10,4,24], ch = ' ', fg = null;
+      const hl = frac(z * 1.1 - t * 1.0);
+      const xr = (x - W / 2) / (p * 1.0);
+      const vl = frac(xr / 7 + 0.5);
+      const glow = clamp(0.25 + p * 0.95);
+      if (hl < 0.16) { ch = '─'; fg = scale([255,60,200], glow); }
+      else if (vl < 0.09 || vl > 0.95) { ch = '│'; fg = scale([70,200,255], glow); }
+      return [ch, fg || FAINT, col];
+    }
+  }
+}
+function drawBackground(g, kind, t) {
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const [ch, fg, bg] = bgCell(kind, x, y, t);
+    const i = idx(x, y); g.ch[i] = ch; g.fg[i] = fg; g.bg[i] = bg;
+  }
+}
+
+// ======================= 화면 2개 =======================
+const GLYPH = {
+  '0': ['###','#.#','#.#','#.#','###'], '1': ['.#.','##.','.#.','.#.','###'], '2': ['###','..#','###','#..','###'],
+  '3': ['###','..#','###','..#','###'], '4': ['#.#','#.#','###','..#','..#'], '5': ['###','#..','###','..#','###'],
+  '6': ['###','#..','###','#.#','###'], '7': ['###','..#','..#','..#','..#'], '8': ['###','#.#','###','#.#','###'],
+  '9': ['###','#.#','###','..#','###'], ':': ['.','#','.','#','.'],
+};
+function homeScreen(bgKind, t) {
+  const g = newGrid();
+  drawBackground(g, bgKind, t);
+  const bw = 56, bh = 15, x0 = (W - bw) >> 1, y0 = (H - bh) >> 1;
+  box(g, x0, y0, bw, bh);
+  put(g, x0 + 2, y0 + 1, '터미널 플레이그라운드', ACCENT, PANEL);
+  put(g, x0 + bw - 21, y0 + 1, '2026-11-05 14:32:07', MUTED, PANEL);
+  hline(g, x0, y0 + 2, bw);
+  const apps = [['종료 타이머', '예약됨 00:37:53'], ['포모도로', ''], ['스톱워치', ''], ['시스템 모니터', ''], ['Claude 사용량', ''], ['Codex 사용량', ''], ['할 일', '']];
+  apps.forEach((a, i) => {
+    const y = y0 + 4 + i, sel = i === 0;
+    put(g, x0 + 2, y, sel ? '▸' : ' ', ACCENT, PANEL);
+    put(g, x0 + 4, y, '[' + (i + 1) + ']', MUTED, PANEL);
+    put(g, x0 + 8, y, a[0], sel ? ACCENT : TEXT, PANEL);
+    if (a[1]) { put(g, x0 + bw - 3 - 15, y, ' 예약됨 ', [12,12,12], OK); put(g, x0 + bw - 3 - 6, y, '00:37:53', TEXT, PANEL); }
+  });
+  hline(g, x0, y0 + 12, bw);
+  put(g, x0 + 2, y0 + 13, '[↑↓] 선택   [1-9] 바로 열기   [Enter] 실행   [Esc] 종료', MUTED, PANEL);
+  return g;
+}
+function timerScreen(t) {
+  const g = newGrid();
+  fillRect(g, 0, 0, W, H, [8,8,10]);
+  const bw = 56, bh = 15, x0 = (W - bw) >> 1, y0 = (H - bh) >> 1;
+  box(g, x0, y0, bw, bh);
+  put(g, x0 + 2, y0 + 1, '터미널 플레이그라운드', ACCENT, PANEL);
+  put(g, x0 + bw - 21, y0 + 1, '2026-11-05 14:32:07', MUTED, PANEL);
+  hline(g, x0, y0 + 2, bw);
+  put(g, x0 + 2, y0 + 4, ' 예약됨 ', [12,12,12], OK); put(g, x0 + 12, y0 + 4, '종료시각  2026-11-05 15:10:00', MUTED, PANEL);
+  const s = '00:37:53'; let cx = 0; const widths = [...s].map(c => c === ':' ? 1 : 3);
+  const total = widths.reduce((a, b) => a + b * 2, 0) + (s.length - 1) * 1;
+  let px = x0 + ((bw - total) >> 1);
+  for (let k = 0; k < s.length; k++) {
+    const gl = GLYPH[s[k]];
+    for (let r = 0; r < 5; r++) for (let c = 0; c < gl[r].length; c++) if (gl[r][c] === '#') { set(g, px + c * 2, y0 + 5 + r, '█', OK, PANEL); set(g, px + c * 2 + 1, y0 + 5 + r, '█', OK, PANEL); }
+    px += gl[0].length * 2 + 1;
+  }
+  put(g, x0 + 2, y0 + 11, '━'.repeat(21), OK, PANEL); put(g, x0 + 23, y0 + 11, '━'.repeat(26), FAINT, PANEL); put(g, x0 + bw - 7, y0 + 11, ' 37%', OK, PANEL);
+  hline(g, x0, y0 + 12, bw);
+  put(g, x0 + 2, y0 + 13, '[1] 새 타이머   [2] 취소   [3] 홈으로', MUTED, PANEL);
+  return g;
+}
+
+// ======================= 전환 4종 =======================
+const TR = {
+  1: { name: '빛나는 와이프', desc: '대각선으로 빛나는 줄이 훑고 지나가며 새 화면이 드러남. 깔끔하고 빠른 느낌' },
+  2: { name: '원형 열기(아이리스)', desc: '화면 중앙에서 빛나는 고리가 퍼져 나가며 새 화면이 열림. 화면이 "열리는" 느낌' },
+  3: { name: '디졸브(반짝 교체)', desc: '칸이 무작위로 하나씩 반짝이며 새 화면으로 바뀜. 가장 반짝이고 장난스러움' },
+  4: { name: '밀어내기', desc: '새 화면이 오른쪽에서 밀려 들어오며 옛 화면을 밀어냄. 앱으로 "들어가는" 느낌' },
+};
+function pick(A, B, i, from) { // from: 'A'|'B'
+  const s = from === 'A' ? A : B;
+  return [s.ch[i], s.fg[i], s.bg[i]];
+}
+function transition(kind, A, B, u) {
+  const g = newGrid();
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = idx(x, y);
+    let cell = null;
+    const ex = x & ~1; // 한글(2칸)이 반쯤 바뀌지 않도록 두 칸씩 묶어 판단
+    if (kind === 1) {
+      const s = (ex / W) * 0.72 + (y / H) * 0.28;
+      const e = ease(u) * 1.25 - 0.12;
+      const d = s - e;
+      if (d < -0.05) cell = pick(A, B, i, 'B');
+      else if (d < 0.07) {
+        const k = 1 - Math.abs(d) / 0.07;
+        const ch = k > 0.66 ? '█' : k > 0.33 ? '▓' : '▒';
+        cell = [ch, gradient([[60,120,255],[97,214,214],[255,255,255]], k), gradient([[10,20,60],[30,70,110],[120,200,220]], k)];
+      } else cell = pick(A, B, i, 'A');
+    } else if (kind === 2) {
+      const dx = (ex - W / 2) / 2, dy = y - H / 2;
+      const r = Math.hypot(dx, dy), maxR = Math.hypot(W / 4, H / 2) + 2;
+      const R = ease(u) * (maxR + 3) - 1;
+      if (r < R - 1.6) cell = pick(A, B, i, 'B');
+      else if (r < R + 0.2) {
+        const k = 1 - (R - r) / 1.8;
+        cell = [k > 0.6 ? '▓' : '▒', gradient([[97,214,214],[255,255,255]], k), gradient([[20,60,90],[140,220,240]], k)];
+      } else cell = pick(A, B, i, 'A');
+    } else if (kind === 3) {
+      const n = hash(ex >> 1, y, 7);
+      const th = ease(u) * 1.16 - 0.08;
+      if (n < th - 0.07) cell = pick(A, B, i, 'B');
+      else if (n < th + 0.02) cell = [n > th - 0.03 ? '✦' : '+', gradient([[97,214,214],[255,255,255]], hash(x, y, 3)), pick(A, B, i, 'A')[2] || [12,12,12]];
+      else cell = pick(A, B, i, 'A');
+    } else {
+      const off = Math.round(ease(u) * W);
+      const xa = x + off;
+      if (x === W - off || x === W - off - 1 && off > 0 && off < W) cell = ['│', [200,240,255], [30,70,110]];
+      else if (xa < W) cell = [A.ch[idx(xa, y)], A.fg[idx(xa, y)], A.bg[idx(xa, y)]];
+      else { const xb = xa - W; cell = [B.ch[idx(xb, y)], B.fg[idx(xb, y)], B.bg[idx(xb, y)]]; }
+    }
+    g.ch[i] = cell[0]; g.fg[i] = cell[1]; g.bg[i] = cell[2];
+  }
+  return g;
+}
+// 사이클: 홈 정지 → 전환 → 타이머 정지 → 전환(되돌아옴)
+function trFrame(kind, t) {
+  const HOLD = 1.3, DUR = 0.8, cyc = 2 * (HOLD + DUR), c = ((t % cyc) + cyc) % cyc;
+  const A = homeScreen('A', t), B = timerScreen(t);
+  if (c < HOLD) return A;
+  if (c < HOLD + DUR) return transition(kind, A, B, (c - HOLD) / DUR);
+  if (c < 2 * HOLD + DUR) return B;
+  return transition(kind, B, A, (c - 2 * HOLD - DUR) / DUR);
+}
+
+// ======================= 그리기 =======================
+function draw(canvas, g) {
+  const ctx = canvas.getContext('2d');
+  ctx.font = `${CH - 4}px "Cascadia Mono","D2Coding",Consolas,"Malgun Gothic",monospace`;
+  ctx.textBaseline = 'middle';
+  const conv = c => (c ? (mode16 ? q16(c) : c) : null);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = idx(x, y);
+    const bg = conv(g.bg[i]);
+    ctx.fillStyle = bg ? rgb(bg) : '#0c0c0c';
+    ctx.fillRect(x * CW, y * CH, CW + 0.5, CH + 0.5);
+  }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = idx(x, y), ch = g.ch[i];
+    if (!ch || ch === ' ') continue;
+    const fg = conv(g.fg[i]) || [204,204,204];
+    ctx.fillStyle = rgb(fg);
+    ctx.fillText(ch, x * CW, y * CH + CH / 2 + 1);
+  }
+}
+function makeFigure(parent, label, name, desc, fn) {
+  const fig = document.createElement('figure');
+  const cv = document.createElement('canvas');
+  cv.width = W * CW; cv.height = H * CH;
+  const cap = document.createElement('figcaption');
+  cap.innerHTML = `<b>${label}</b>${name}<span>${desc}</span>`;
+  fig.append(cv, cap); parent.append(fig);
+  return { cv, fn };
+}
+const items = [];
+for (const k of Object.keys(BG)) items.push(makeFigure(document.getElementById('bgGrid'), k, BG[k].name, BG[k].desc, t => homeScreen(k, t)));
+for (const k of Object.keys(TR)) items.push(makeFigure(document.getElementById('trGrid'), k, TR[k].name, TR[k].desc, t => trFrame(+k, t)));
+
+document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => { mode16 = r.value === '16' && r.checked || (mode16 && r.value !== 'true'); render(lastT); }));
+let paused = false, lastT = 0, last = 0, tOffset = 0, tPausedAt = 0;
+document.getElementById('paused').addEventListener('change', e => { paused = e.target.checked; });
+function render(t) { for (const it of items) draw(it.cv, it.fn(t)); }
+if (FREEZE !== null) { if (params.get('mode') === '16') mode16 = true; render(FREEZE); }
+else {
+  let startT = null, acc = 0, prev = null;
+  function loop(ts) {
+    if (prev === null) prev = ts;
+    const dt = (ts - prev) / 1000; prev = ts;
+    if (!paused) acc += dt;
+    if (ts - last > 1000 / 30) { last = ts; lastT = acc; render(acc); }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>

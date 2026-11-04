@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -26,17 +25,12 @@ const codeAlreadyScheduled = 1190
 var (
 	shutdownSchedule = platformSchedule
 	shutdownCancel   = platformCancel
+	// 실패 이유 (platform_*.go). 이유를 모르면 빈 문자열
+	shutdownFailReason   = platformFailReason       // 예약 실패 코드 → 화면에 보일 한 줄 이유
+	shutdownCancelReason = platformCancelFailReason // 예약이 남아 있는데 취소하지 못했을 때의 이유
 )
 
 func bootUnix() int64 { return platformBootUnix() }
-
-func statePath() string {
-	base := os.Getenv("LOCALAPPDATA")
-	if base == "" {
-		base = os.TempDir()
-	}
-	return filepath.Join(base, "shutdown_timer_go.state")
-}
 
 // ---- 상태 파일 ----
 

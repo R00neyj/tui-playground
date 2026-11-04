@@ -136,10 +136,17 @@ func (a *timerApp) setTimer(sec int64) {
 	had := false
 	if code == codeAlreadyScheduled { // 이미 예약된 종료가 있음 -> 취소 후 재시도
 		had = true
-		shutdownCancel()
+		if !shutdownCancel() {
+			if why := shutdownCancelReason(); why != "" {
+				// 예약이 남아 있는데 취소하지 못함 (권한 등). 기존 예약은 그대로이므로 상태를 건드리지 않음
+				a.say("예약 실패 (기존 예약을 취소하지 못함: "+why+") / 기존 타이머 유지됨", ToneDanger)
+				return
+			}
+		}
 		code = shutdownSchedule(sec)
 	}
 	if code != 0 {
+		why := failText(code)
 		if had {
 			// 기존 예약이 이 프로그램이 건 것이면 남은 시간만큼 복구 시도
 			var left int64
@@ -147,14 +154,14 @@ func (a *timerApp) setTimer(sec int64) {
 				left = int64(time.Until(old.Target).Seconds())
 			}
 			if left > 0 && shutdownSchedule(left) == 0 {
-				a.say(fmt.Sprintf("예약 실패 (오류 %d) / 기존 타이머 유지됨", code), ToneDanger)
+				a.say("예약 실패 ("+why+") / 기존 타이머 유지됨", ToneDanger)
 				return
 			}
 			os.Remove(statePath())
 			a.cur = nil
-			a.say(fmt.Sprintf("예약 실패 (오류 %d) / 기존 예약은 취소된 상태", code), ToneDanger)
+			a.say("예약 실패 ("+why+") / 기존 예약은 취소된 상태", ToneDanger)
 		} else {
-			a.say(fmt.Sprintf("예약 실패 (shutdown 오류 %d)", code), ToneDanger)
+			a.say("예약 실패 ("+why+")", ToneDanger)
 		}
 		return
 	}
@@ -174,8 +181,23 @@ func (a *timerApp) setTimer(sec int64) {
 	a.say(txt+warn, tone)
 }
 
+// failText 는 예약 실패를 화면에 보일 문구로 바꿈. 이유를 알면 이유, 모르면 숫자 코드를 보여줌
+func failText(code int) string {
+	if why := shutdownFailReason(code); why != "" {
+		return why
+	}
+	return fmt.Sprintf("shutdown 오류 %d", code)
+}
+
 func (a *timerApp) stopTimer() {
 	ok := shutdownCancel()
+	if !ok {
+		if why := shutdownCancelReason(); why != "" {
+			// 예약이 남아 있는데 취소하지 못함: 예약이 없다고 말하거나 상태 파일을 지우면 안 됨
+			a.say("취소하지 못함 ("+why+") / 예약은 그대로 남아 있음", ToneDanger)
+			return
+		}
+	}
 	os.Remove(statePath())
 	a.cur = nil
 	if ok {

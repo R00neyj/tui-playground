@@ -1,9 +1,9 @@
 package main
 
-// 자리표시 구현. 이 파일을 통째로 실제 앱으로 바꿔서 쓴다 (AppInfo 변수 이름은 유지할 것).
+// Claude Code 사용량 (F-08). 화면과 읽기 로직은 usage_view.go, 기록 형식은 usage_claude.go 에 있음.
 var claudeUsageInfo = AppInfo{
 	ID:   "claude-usage",
 	Name: "Claude 사용량",
 	Desc: "Claude Code 토큰 사용 기록",
-	New:  func(env *Env) App { return newStub("Claude 사용량") },
+	New:  func(env *Env) App { return newUsageApp(claudeUsageSource) },
 }

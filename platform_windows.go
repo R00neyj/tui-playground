@@ -38,6 +38,12 @@ func platformSchedule(sec int64) int {
 	return runShutdown("/s", "/t", strconv.FormatInt(sec, 10))
 }
 
+// platformFailReason 은 예약 실패 코드를 화면에 보일 이유로 풀어줌. Windows 는 숫자 코드만 보여주므로 빈 문자열.
+func platformFailReason(code int) string { return "" }
+
+// platformCancelFailReason 은 취소하지 못한 이유. Windows 는 취소 실패를 "예약 없음" 으로 보므로 빈 문자열.
+func platformCancelFailReason() string { return "" }
+
 // platformCancel 은 예약된 종료를 취소함. 취소할 예약이 있었으면 true.
 func platformCancel() bool { return runShutdown("/a") == 0 }
 

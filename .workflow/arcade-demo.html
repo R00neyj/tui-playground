@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>아케이드 홈 화면 예시 — 터미널 플레이그라운드</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #14161a; color: #d8dbe0; font: 15px/1.55 system-ui, "Malgun Gothic", sans-serif; }
+  header { padding: 22px 32px 14px; border-bottom: 1px solid #2a2e36; }
+  h1 { margin: 0 0 6px; font-size: 20px; }
+  p { margin: 0; color: #9aa1ad; }
+  kbd { background: #2a2e36; border: 1px solid #3a3f49; border-radius: 4px; padding: 0 6px; font: 13px "Cascadia Mono", Consolas, monospace; color: #e8eaee; }
+  .row { display: flex; gap: 26px; padding: 22px 32px 10px; flex-wrap: wrap; align-items: flex-start; }
+  figure { margin: 0; background: #0c0c0c; border: 1px solid #2a2e36; border-radius: 10px; overflow: hidden; }
+  canvas { display: block; }
+  figcaption { padding: 10px 14px 12px; border-top: 1px solid #2a2e36; background: #181b20; max-width: 640px; }
+  figcaption b { display: inline-block; min-width: 1.6em; padding: 0 7px; margin-right: 8px; border-radius: 5px; background: #3a7bd5; color: #fff; text-align: center; }
+  figcaption span { color: #9aa1ad; font-size: 13px; display: block; margin-top: 3px; }
+  footer { padding: 14px 32px 50px; color: #9aa1ad; max-width: 1100px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>아케이드 홈 화면 예시</h1>
+  <p>이 페이지를 한 번 클릭한 뒤 <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> <kbd>Enter</kbd> <kbd>Esc</kbd> <kbd>1</kbd>~<kbd>7</kbd> 을 눌러보면 조이스틱이 기울고 버튼이 눌림. 4초 동안 아무 키도 안 누르면 저절로 시연함.</p>
+</header>
+<div class="row" id="row"></div>
+<footer>
+  실제 터미널에서는 화면을 다시 그리는 속도(초당 약 30회)와 글꼴에 따라 조금 다르게 보일 수 있음. 터미널 창이 작으면(세로 21줄 미만) 기존 홈 화면으로 자동 대체할 계획임. 조이스틱의 ←/→ 는 지금 홈 목록에서 하는 일이 없어서 기울기만 보여줌.
+</footer>
+<script>
+const CW = 9, CH = 18;
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const mix = (c1, c2, t) => [lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t)];
+const scale = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
+const rgb = c => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
+function hsl(h, s, l) { // h 0..360
+  h = ((h % 360) + 360) % 360; s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return [f(0) * 255, f(8) * 255, f(4) * 255];
+}
+const isWide = ch => { const c = ch.codePointAt(0); return (c >= 0x1100 && c <= 0x11ff) || (c >= 0x3130 && c <= 0x318f) || (c >= 0xac00 && c <= 0xd7a3) || c === 0x2605 || c === 0x25c6 && false; };
+
+class Grid {
+  constructor(w, h) { this.w = w; this.h = h; this.ch = new Array(w * h).fill(' '); this.fg = new Array(w * h).fill(null); this.bg = new Array(w * h).fill(null); }
+  set(x, y, ch, fg, bg) { x |= 0; y |= 0; if (x < 0 || y < 0 || x >= this.w || y >= this.h) return; const i = y * this.w + x; this.ch[i] = ch; if (fg) this.fg[i] = fg; if (bg) this.bg[i] = bg; }
+  put(x, y, str, fg, bg) { for (const ch of str) { this.set(x, y, ch, fg, bg); if (isWide(ch)) { this.set(x + 1, y, '', fg, bg); x += 2; } else x += 1; } }
+  rect(x0, y0, w, h, bg, ch = ' ', fg) { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) this.set(x, y, ch, fg || null, bg); }
+}
+const width = s => { let n = 0; for (const ch of s) n += isWide(ch) ? 2 : 1; return n; };
+
+// ---------------- 상태 ----------------
+const APPS = [['종료 타이머', '예약됨 00:37:53'], ['포모도로', ''], ['스톱워치', ''], ['시스템 모니터', ''], ['Claude 사용량', ''], ['Codex 사용량', ''], ['할 일', '']];
+const S = { sel: 0, now: 0, pulses: {}, joy: { x: 0, y: 0 }, launch: -9, lastUser: -99 };
+const pulse = (name, dur = 0.22) => { S.pulses[name] = S.now + dur; };
+const on = name => (S.pulses[name] || 0) > S.now;
+
+function press(key, user) {
+  if (user) S.lastUser = S.now;
+  if (key === 'up') { S.sel = (S.sel + APPS.length - 1) % APPS.length; pulse('up'); }
+  else if (key === 'down') { S.sel = (S.sel + 1) % APPS.length; pulse('down'); }
+  else if (key === 'left') pulse('left');
+  else if (key === 'right') pulse('right');
+  else if (key === 'enter') { pulse('A', 0.18); S.launch = S.now; }
+  else if (key === 'esc') { pulse('B', 0.18); }
+  else if (/^[1-7]$/.test(key)) { S.sel = +key - 1; pulse('n' + key, 0.3); pulse('A', 0.12); S.launch = S.now; }
+}
+addEventListener('keydown', e => {
+  const m = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', Enter: 'enter', Escape: 'esc' };
+  const k = m[e.key] || (/^[1-7]$/.test(e.key) ? e.key : null);
+  if (!k) return; e.preventDefault(); press(k, true);
+});
+const SCRIPT = ['down', 'down', 'right', 'down', 'enter', 'up', 'left', 'up', 'esc', '5', 'down', 'enter', 'up', 'up', 'B'];
+let scriptI = 0, nextAuto = 0;
+function autoplay() {
+  if (S.now - S.lastUser < 4 || S.now < nextAuto) return;
+  const k = SCRIPT[scriptI++ % SCRIPT.length];
+  if (k === 'B') pulse('B', 0.2); else press(/^[0-9]$/.test(k) ? k : k, false);
+  nextAuto = S.now + 0.75;
+}
+
+// ---------------- 색 ----------------
+const COL = { panel: [20, 22, 30], frame: [58, 62, 82], frameHi: [112, 120, 150], text: [242, 242, 242], muted: [204, 204, 204], faint: [118, 118, 118], accent: [97, 214, 214], ok: [22, 198, 12], crt: [8, 10, 14], red: [236, 64, 72], redDim: [120, 34, 40], yellow: [250, 204, 60], yellowDim: [130, 104, 30], blue: [66, 140, 255], blueDim: [30, 62, 120], base: [12, 12, 16] };
+
+// ---------------- 조이스틱 / 버튼 ----------------
+function joystick(g, cx, top) {   // top .. top+5 (위로 기울면 top-1 까지 씀)
+  const tx = (on('right') ? 1 : 0) - (on('left') ? 1 : 0), ty = (on('down') ? 1 : 0) - (on('up') ? 1 : 0);
+  S.joy.x += (tx - S.joy.x) * 0.45; S.joy.y += (ty - S.joy.y) * 0.45;
+  const jx = Math.round(S.joy.x * 3), jy = Math.round(S.joy.y);
+  const baseY = top + 5, ballY = top + 1 + jy, ballX = cx + jx, P = COL.panel;
+  // 받침
+  g.put(cx - 5, baseY, '▄▄▄▄▄▄▄▄▄▄▄', [70, 74, 96], P);
+  g.put(cx - 2, baseY, '▄▄▄▄▄', [120, 126, 150], P);
+  // 막대: 받침 위에서 공 아래까지
+  const botY = ballY + 2;
+  for (let y = baseY - 1; y >= botY; y--) {
+    const k = (baseY - y) / (baseY - botY + 1);
+    const x = Math.round(cx + (ballX - cx) * k), x2 = Math.round(cx + (ballX - cx) * ((baseY - y + 1) / (baseY - botY + 1)));
+    g.put(x, y, x2 === x ? '█' : (ballX > cx ? '▞' : '▚'), [196, 200, 212], P);
+  }
+  // 공 (빨강, 5x3)
+  const lit = jx !== 0 || jy !== 0, c = lit ? [255, 96, 104] : COL.red;
+  g.put(ballX - 2, ballY - 1, '▗▄▄▄▖', c, P);
+  g.put(ballX - 2, ballY, '▐███▌', c, P);
+  g.put(ballX - 2, ballY + 1, '▝▀▀▀▘', scale(c, 0.7), P);
+  g.set(ballX - 1, ballY - 1, '▄', [255, 190, 196], P);
+}
+function bigButton(g, x, top, label, color, dim, down) {  // 폭 7, 높이 3(그림자 포함)
+  const y = down ? top + 1 : top;
+  const c = down ? dim : color;
+  g.put(x, y, '▄▄▄▄▄▄▄', scale(c, 0.8), COL.panel);
+  g.rect(x, y + 1, 7, 1, c);
+  g.put(x + 3, y + 1, label, down ? [30, 30, 30] : [20, 20, 24], c);
+  if (!down) g.put(x, y + 2, '▀▀▀▀▀▀▀', scale(c, 0.35), COL.panel);
+}
+function smallButton(g, x, y, n) {
+  const lit = on('n' + n);
+  const c = lit ? COL.yellow : COL.yellowDim;
+  g.put(x, y, '(', scale(c, 0.8), COL.panel); g.put(x + 1, y, String(n), lit ? [20, 20, 20] : [30, 26, 10], c); g.put(x + 2, y, ')', scale(c, 0.8), COL.panel);
+}
+
+// ---------------- 화면(메뉴) ----------------
+function screen(g, x0, y0, w, h, t) {
+  g.rect(x0, y0, w, h, COL.crt);
+  const flash = clamp(1 - (t - S.launch) / 0.35);
+  const loading = t - S.launch < 0.5;
+  g.put(x0 + ((w - width('◆ SELECT GAME ◆')) >> 1), y0, '◆ SELECT GAME ◆', COL.accent, COL.crt);
+  g.put(x0 + 1, y0 + 1, '─'.repeat(w - 2), [40, 48, 60], COL.crt);
+  APPS.forEach((a, i) => {
+    const y = y0 + 2 + i, sel = i === S.sel;
+    const bg = sel ? [22, 52, 64] : COL.crt;
+    g.rect(x0 + 1, y, w - 2, 1, bg);
+    g.put(x0 + 2, y, sel ? '▸' : ' ', COL.accent, bg);
+    g.put(x0 + 4, y, '[' + (i + 1) + ']', sel ? COL.accent : COL.muted, bg);
+    g.put(x0 + 8, y, a[0], sel ? COL.accent : COL.text, bg);
+    if (a[1]) { g.put(x0 + w - 3 - 15, y, ' 예약됨 ', [12, 12, 12], COL.ok, bg); g.put(x0 + w - 3 - 6, y, '00:37:53', COL.text, bg); }
+  });
+  const yb = y0 + h - 1;
+  if (loading) {
+    const dots = '.'.repeat(1 + Math.floor((t - S.launch) * 8) % 3);
+    const msg = `▶ ${APPS[S.sel][0]} 실행${dots}`;
+    g.put(x0 + ((w - width(msg)) >> 1), yb, msg, COL.yellow, COL.crt);
+  } else {
+    const blink = Math.floor(t * 1.6) % 2 === 0;
+    const msg = 'PRESS  ENTER  TO  START';
+    g.put(x0 + ((w - width(msg)) >> 1), yb, msg, blink ? COL.yellow : [90, 74, 20], COL.crt);
+  }
+  if (flash > 0) for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) { const i = y * g.w + x; if (g.bg[i]) g.bg[i] = mix(g.bg[i], [210, 240, 250], flash * 0.28); }
+}
+
+// ---------------- 캐비닛 ----------------
+function cabinetFull(g, t) {
+  const W = g.w;
+  g.rect(0, 0, W, g.h, [8, 8, 12]);
+  // 별 배경
+  for (let i = 0; i < 40; i++) { const x = (i * 37) % W, y = (i * 17) % g.h; if (Math.sin(t * 2 + i) > 0.2) g.set(x, y, '·', [90, 100, 130], [8, 8, 12]); }
+  const cx0 = 3, cw = W - 6;
+  // 몸통
+  g.rect(cx0, 0, cw, g.h, COL.panel);
+  for (let y = 0; y < g.h; y++) { g.set(cx0, y, '▌', COL.frame, [8, 8, 12]); g.set(cx0 + cw - 1, y, '▐', COL.frame, [8, 8, 12]); }
+  // 마퀴(간판)
+  g.rect(cx0 + 2, 0, cw - 4, 4, [26, 14, 40]);
+  const title = '★ 터 미 널  플 레 이 그 라 운 드 ★';
+  const tx = cx0 + ((cw - width(title)) >> 1);
+  let x = tx;
+  for (const ch of title) { g.set(x, 1, ch, hsl(t * 90 + x * 9, 90, 62), [26, 14, 40]); if (isWide(ch)) { g.set(x + 1, 1, '', null, [26, 14, 40]); x += 2; } else x++; }
+  g.put(tx + 6, 2, 'T E R M I N A L   P L A Y G R O U N D'.slice(0, 0), COL.faint, [26, 14, 40]);
+  for (let i = 0; i < cw - 4; i++) { const on2 = (i + Math.floor(t * 8)) % 3 === 0; g.set(cx0 + 2 + i, 0, '●', on2 ? [255, 214, 90] : [90, 70, 20], [26, 14, 40]); g.set(cx0 + 2 + i, 3, '●', on2 ? [90, 70, 20] : [255, 214, 90], [26, 14, 40]); }
+  // 화면 베젤
+  const bx = cx0 + 3, by = 5, bw = cw - 6, bh = 15;
+  g.rect(bx, by, bw, bh, [6, 6, 10]);
+  g.put(bx, by, '╔' + '═'.repeat(bw - 2) + '╗', COL.frameHi, [6, 6, 10]);
+  g.put(bx, by + bh - 1, '╚' + '═'.repeat(bw - 2) + '╝', COL.frameHi, [6, 6, 10]);
+  for (let y = by + 1; y < by + bh - 1; y++) { g.set(bx, y, '║', COL.frameHi, [6, 6, 10]); g.set(bx + bw - 1, y, '║', COL.frameHi, [6, 6, 10]); }
+  screen(g, bx + 2, by + 1, bw - 4, bh - 2, t);
+  // 조작판
+  const py = by + bh + 1;
+  g.put(cx0 + 1, py - 1, '▄'.repeat(cw - 2), [48, 52, 70], COL.panel);
+  g.rect(cx0 + 1, py, cw - 2, 8, [28, 30, 42]);
+  for (let x = cx0 + 1; x < cx0 + cw - 1; x++) g.set(x, py, '▀', [48, 52, 70], [28, 30, 42]);
+  const P = [28, 30, 42];
+  // 조이스틱
+  const savedPanel = COL.panel; COL.panel = P;
+  joystick(g, cx0 + 14, py + 1);
+  g.put(cx0 + 10, py + 7, 'JOYSTICK', COL.faint, P);
+  // 큰 버튼 2개
+  bigButton(g, cx0 + 31, py + 2, 'A', COL.red, COL.redDim, on('A'));
+  bigButton(g, cx0 + 41, py + 2, 'B', COL.blue, COL.blueDim, on('B'));
+  g.put(cx0 + 30, py + 6, 'A 실행', COL.faint, P); g.put(cx0 + 40, py + 6, 'B 뒤로', COL.faint, P);
+  // 숫자 버튼
+  for (let i = 0; i < 7; i++) smallButton(g, cx0 + 31 + (i % 4) * 4 - 0, py + 0 + 0, i + 1);
+  COL.panel = savedPanel;
+  // 코인 투입구
+  const coin = Math.floor(t * 2) % 2 === 0;
+  g.put(cx0 + cw - 12, py + 2, '▛▀▀▀▜', COL.frameHi, P);
+  g.put(cx0 + cw - 12, py + 3, '▌ ▮ ▐', coin ? COL.yellow : COL.yellowDim, P);
+  g.put(cx0 + cw - 12, py + 4, '▙▄▄▄▟', COL.frameHi, P);
+  g.put(cx0 + cw - 12, py + 6, 'COIN', coin ? COL.yellow : COL.faint, P);
+  // 하단
+  const yb = py + 8;
+  g.rect(cx0 + 1, yb, cw - 2, g.h - yb, [14, 14, 20]);
+  g.put(cx0 + 4, yb, '[q] 종료', COL.muted, [14, 14, 20]);
+}
+function cabinetCompact(g, t) {
+  g.rect(0, 0, g.w, g.h, [8, 8, 12]);
+  const W = g.w, bx = 3, bw = W - 6;
+  g.rect(bx, 0, bw, 14, [6, 6, 10]);
+  g.put(bx, 0, '╭' + '─'.repeat(bw - 2) + '╮', COL.frameHi, [6, 6, 10]);
+  g.put(bx, 13, '╰' + '─'.repeat(bw - 2) + '╯', COL.frameHi, [6, 6, 10]);
+  for (let y = 1; y < 13; y++) { g.set(bx, y, '│', COL.frameHi, [6, 6, 10]); g.set(bx + bw - 1, y, '│', COL.frameHi, [6, 6, 10]); }
+  // 제목 줄
+  g.put(bx + 2, 1, '터미널 플레이그라운드', COL.accent, [6, 6, 10]);
+  screen(g, bx + 2, 2, bw - 4, 11, t);
+  const py = 14, P = [28, 30, 42];
+  g.rect(bx, py, bw, 7, P);
+  g.put(bx + 8, py + 6, 'JOYSTICK', COL.faint, P);
+  for (let x = bx; x < bx + bw; x++) g.set(x, py, '▀', [48, 52, 70], P);
+  const saved = COL.panel; COL.panel = P;
+  joystick(g, bx + 12, py + 1);
+  bigButton(g, bx + 26, py + 2, 'A', COL.red, COL.redDim, on('A'));
+  bigButton(g, bx + 36, py + 2, 'B', COL.blue, COL.blueDim, on('B'));
+  g.put(bx + 25, py + 5, 'A 실행', COL.faint, P); g.put(bx + 35, py + 5, 'B 뒤로', COL.faint, P);
+  for (let i = 0; i < 7; i++) smallButton(g, bx + 26 + (i % 4) * 4, py + 1, i + 1);
+  COL.panel = saved;
+  g.put(bx + bw - 12, py + 3, '[q] 종료', COL.muted, P);
+}
+
+// ---------------- 그리기 ----------------
+function draw(canvas, g, scan) {
+  const ctx = canvas.getContext('2d');
+  ctx.font = `${CH - 4}px "Cascadia Mono","D2Coding",Consolas,"Malgun Gothic",monospace`; ctx.textBaseline = 'middle';
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) { const i = y * g.w + x, bg = g.bg[i]; ctx.fillStyle = bg ? rgb(bg) : '#0c0c0c'; ctx.fillRect(x * CW, y * CH, CW + 0.5, CH + 0.5); }
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) { const i = y * g.w + x, ch = g.ch[i]; if (!ch || ch === ' ') continue; ctx.fillStyle = rgb(g.fg[i] || [204, 204, 204]); ctx.fillText(ch, x * CW, y * CH + CH / 2 + 1); }
+  if (scan) { ctx.fillStyle = 'rgba(0,0,0,0.16)'; for (let y = scan.y0 * CH; y < (scan.y0 + scan.h) * CH; y += 3) ctx.fillRect(scan.x0 * CW, y, scan.w * CW, 1); }
+}
+function figure(title, name, desc, g) {
+  const fig = document.createElement('figure'), cv = document.createElement('canvas');
+  cv.width = g.w * CW; cv.height = g.h * CH;
+  const cap = document.createElement('figcaption'); cap.innerHTML = `<b>${title}</b>${name}<span>${desc}</span>`;
+  fig.append(cv, cap); document.getElementById('row').append(fig); return cv;
+}
+const gFull = new Grid(72, 31), gCompact = new Grid(72, 21);
+const cvFull = figure('1', '캐비닛형', '간판(번쩍이는 전구), 화면 베젤, 조작판, 코인 투입구까지 있는 풀 캐비닛. 세로 31줄 이상 필요함', gFull);
+const cvCompact = figure('2', '하단 패널형', '메뉴 화면 아래에 조작판만 붙인 간단한 형태. 세로 21줄이면 들어감', gCompact);
+const params = new URLSearchParams(location.search);
+const FREEZE = params.has('freeze') ? parseFloat(params.get('freeze')) : null;
+function frame(t) {
+  S.now = t; autoplay();
+  cabinetFull(gFull, t); cabinetCompact(gCompact, t);
+  draw(cvFull, gFull, { x0: 8, y0: 6, w: 56, h: 13 });
+  draw(cvCompact, gCompact, { x0: 5, y0: 2, w: 62, h: 11 });
+}
+if (FREEZE !== null) {
+  // 정지 화면용: 약간 앞서 몇 번 눌러둠
+  S.now = 0; press('down'); press('down'); S.now = FREEZE - 0.05; pulse('down', 0.3); pulse('A', 0.3); pulse('n3', 0.3); S.lastUser = FREEZE;
+  S.joy.y = 1; S.joy.x = 0.9; pulse('right', 1);
+  for (let i = 0; i < 6; i++) frame(FREEZE);
+} else {
+  let t0 = null;
+  (function loop(ts) { if (t0 === null) t0 = ts; frame((ts - t0) / 1000); requestAnimationFrame(loop); })(performance.now());
+}
+</script>
+</body>
+</html>

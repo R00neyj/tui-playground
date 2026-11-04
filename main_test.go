@@ -119,7 +119,12 @@ func TestAllAppsRender(t *testing.T) {
 				t.Fatalf("%s: New 가 nil 을 돌려줌", info.ID)
 			}
 			c := testCtx(sz[0], sz[1])
-			assertFrame(t, info.ID, c, a.View(c))
+			v := a.View(c)
+			assertFrame(t, info.ID, c, v)
+			// 화면이 창 높이를 넘으면 가운데 정렬 때 윗부분(머리줄·탭)이 잘려 나감. 큰 숫자를 쓰는 높이(21)보다 낮은 창에서도 한 줄 숫자로 들어와야 함
+			if n := strings.Count(v, "\n") + 1; n > sz[1] {
+				t.Errorf("%s: %dx%d 창에서 화면이 %d줄로 창 높이를 넘음", info.ID, sz[0], sz[1], n)
+			}
 		}
 	}
 }
@@ -319,5 +324,68 @@ func TestTimerStatusForHome(t *testing.T) {
 	a.setTimer(3600)
 	if st := timerStatus(a.env, time.Now()); st.Badge != "예약됨" || st.Tone != ToneOk || st.Hint == "" {
 		t.Errorf("예약 중 상태: %+v", st)
+	}
+}
+
+// ---- 플랫폼이 알려주는 실패 이유 (macOS/Linux 권한 문제 등) ----
+
+func fakeReasons(t *testing.T, fail func(int) string, cancel func() string) {
+	t.Helper()
+	oldF, oldC := shutdownFailReason, shutdownCancelReason
+	shutdownFailReason, shutdownCancelReason = fail, cancel
+	t.Cleanup(func() { shutdownFailReason, shutdownCancelReason = oldF, oldC })
+}
+
+func TestTimerScheduleFailShowsReason(t *testing.T) {
+	_, a := setupTimer(t, 13)
+	fakeReasons(t, func(c int) string {
+		if c == 13 {
+			return "권한 없음 (sudo 로 실행해야 함)"
+		}
+		return ""
+	}, func() string { return "" })
+	a.setTimer(600)
+	if !strings.Contains(a.msg, "권한 없음 (sudo 로 실행해야 함)") || strings.Contains(a.msg, "오류 13") || a.msgTone != ToneDanger {
+		t.Fatalf("이유가 화면에 보이지 않음: %q", a.msg)
+	}
+}
+
+func TestTimerCancelFailKeepsExistingOnReplace(t *testing.T) {
+	f, a := setupTimer(t)
+	a.setTimer(3600)
+	old := a.cur
+	f.calls = nil
+	f.results = []int{codeAlreadyScheduled}
+	fakeReasons(t, func(int) string { return "" }, func() string { return "권한 없음" })
+	cancelOld := shutdownCancel
+	shutdownCancel = func() bool { f.calls = append(f.calls, "a-fail"); return false }
+	t.Cleanup(func() { shutdownCancel = cancelOld })
+	a.setTimer(60)
+	if a.cur != old || !strings.Contains(a.msg, "기존 타이머 유지됨") || !strings.Contains(a.msg, "권한 없음") {
+		t.Fatalf("취소 실패 시 기존 예약이 유지돼야 함: cur=%v msg=%q", a.cur, a.msg)
+	}
+	for _, c := range f.calls {
+		if strings.HasPrefix(c, "s") && c != "s3600" && c != "s60" {
+			t.Fatalf("예상 밖 호출: %v", f.calls)
+		}
+	}
+	if len(f.calls) != 2 { // 첫 schedule(중복) + 취소 시도 뒤 재시도하지 않아야 함
+		t.Fatalf("취소에 실패했는데 재예약을 시도함: %v", f.calls)
+	}
+	if loadTimer(a.env.Boot) == nil {
+		t.Fatal("상태 파일이 지워짐")
+	}
+}
+
+func TestTimerStopCancelFailKeepsState(t *testing.T) {
+	_, a := setupTimer(t)
+	a.setTimer(3600)
+	fakeReasons(t, func(int) string { return "" }, func() string { return "권한 없음" })
+	old := shutdownCancel
+	shutdownCancel = func() bool { return false }
+	t.Cleanup(func() { shutdownCancel = old })
+	a.stopTimer()
+	if a.cur == nil || loadTimer(a.env.Boot) == nil || !strings.Contains(a.msg, "예약은 그대로 남아 있음") || a.msgTone != ToneDanger {
+		t.Fatalf("취소 실패인데 예약이 지워지거나 안내가 틀림: cur=%v msg=%q", a.cur, a.msg)
 	}
 }
