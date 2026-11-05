@@ -135,6 +135,9 @@ Code uses these names, never raw values. 값은 ANSI 16색 번호이고 실제 �
 | Treemap | 폴더 크기를 면적으로 보여주는 사각형 배치(squarified). 배경색 칸, 크기순, 작은 항목은 `기타 (N개)` 로 묶음. 창이 작으면 Bar row 목록으로 대체 | 디스크 사용량 |
 | Detail line | `▸ 이름   크기  부모의 N%` 한 줄 + 전체 경로 한 줄 | 디스크 사용량 |
 | Reader | 웹 페이지 본문을 박스 폭에 맞춰 줄바꿈해 스크롤로 읽음. 제목은 굵은 accent, 링크는 accent + `[n]`(muted), 인용 `│`·코드는 muted, 목록 `•`/`◦`. 페이지에서 온 글자는 제어문자를 모두 걸러서 출력함 | 웹 브라우저 |
+| Wheel | 현재 칸을 가운데(`▸` + 굵은 accent, 결정되면 color.ok)에 두고 앞뒤 메뉴를 color.text-muted 로 보여주는 5줄 목록. 메뉴가 적어도 5줄을 차지해 화면이 흔들리지 않음 | 점심 룰렛 |
+| Canvas | 점자 캔버스(칸당 가로 2 x 세로 4 점)로 그리는 그림 본문. 점이 거의 정사각형이라 원이 둥글게 나옴. 빈 칸은 공백, 색은 기존 토큰만 씀. `TUI_FIDGET=block` 이면 블록 문자 대체 | 멍때리기 |
+| Fidget tab | 모드 탭 줄(Tab row 재사용) + Canvas 본문 + 상태 줄. 본문 줄 수 = 창 높이 − 9 (3~14) | 멍때리기 |
 
 ### Motion tokens (홈 꾸밈 전용)
 

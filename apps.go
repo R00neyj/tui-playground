@@ -7,9 +7,8 @@ var registry = []AppInfo{
 	pomodoroInfo,
 	stopwatchInfo,
 	sysmonInfo,
-	claudeUsageInfo,
-	codexUsageInfo,
-	todoInfo,
 	diskInfo,
 	browserInfo,
+	lunchInfo,
+	fidgetInfo,
 }

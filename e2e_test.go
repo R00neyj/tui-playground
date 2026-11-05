@@ -25,7 +25,7 @@ func (l *lockedBuf) Write(p []byte) (int, error) {
 func (l *lockedBuf) String() string { l.mu.Lock(); defer l.mu.Unlock(); return l.b.String() }
 
 // 실제 Bubble Tea 이벤트 루프에 키 입력을 흘려 넣어 인트로 건너뛰기 → 앱마다 열기 → Esc 로 홈 복귀 → 종료까지 돌려봄.
-// 사용자 기록 파일(Claude/Codex)과 할 일 파일은 임시 폴더로 돌려서 실제 데이터를 읽거나 쓰지 않음.
+// 사용자 폴더 계열 환경변수를 임시 폴더로 돌려서 실제 설정·데이터를 읽거나 쓰지 않음.
 func TestProgramEndToEnd(t *testing.T) {
 	tmp := t.TempDir()
 	for _, k := range []string{"LOCALAPPDATA", "APPDATA", "USERPROFILE", "HOME", "XDG_CONFIG_HOME", "XDG_CACHE_HOME"} {

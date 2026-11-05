@@ -26,6 +26,8 @@ go build -ldflags "-s -w" -o TUI-playground.exe .
 | `grid.go` `screen.go` | 화면을 칸 격자로 다루는 도구(색 입힌 문자열 ↔ 칸), 홈 합성(배경 + 박스 + 조작부) |
 | `bg.go` `transition.go` `arcade.go` | 홈 배경 5종, 화면 전환 4종, 아케이드 조작부 |
 | `app_diskusage.go` | 디스크 사용량 트리맵 앱(읽기 전용, 폴더 스캔 + squarified 배치) |
+| `app_lunch.go` | 점심 룰렛 앱(메뉴가 돌다 느려지며 멈춤, 추가·삭제, `lunch.json` 저장) |
+| `app_fidget.go` `fidget_canvas.go` `fidget_spinner.go` `fidget_squishy.go` `fidget_bubble.go` | 멍때리기 앱. 호스트(탭·틱·`fidgetMode` 인터페이스) + 점자 캔버스 + 모드 3개. 새 모드는 `fidgetMode` 를 구현하고 `app_fidget.go` 의 `modes` 에 한 줄 추가 |
 | `app_browser.go` `browser_parse.go` `browser_render.go` `browser_marks.go` `browser_kill_*.go` | 텍스트 웹 브라우저 앱(내려받기, 문자 코드 변환, 본문 추출, 줄바꿈, 제어문자 제거, 빠른 이동 목록·검색, 설치된 Chrome/Edge 로 자바스크립트 페이지 렌더링). 의존: golang.org/x/net, x/text |
 | `settings.go` | 홈 설정(배경·전환·조작부) 저장과 설정 화면. 저장 위치는 사용자 설정 폴더의 `TUI-playground/settings.json` |
 | `main_test.go` | 파싱, 예약 로직, 화면 정렬, 동기화 테스트 |
