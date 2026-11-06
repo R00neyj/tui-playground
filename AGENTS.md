@@ -28,7 +28,7 @@ go build -ldflags "-s -w" -o TUI-playground.exe .
 | `app_diskusage.go` | 디스크 사용량 트리맵 앱(읽기 전용, 폴더 스캔 + squarified 배치) |
 | `app_lunch.go` | 점심 룰렛 앱(메뉴가 돌다 느려지며 멈춤, 추가·삭제, `lunch.json` 저장) |
 | `app_fidget.go` `fidget_canvas.go` `fidget_spinner.go` `fidget_squishy.go` `fidget_bubble.go` | 멍때리기 앱. 호스트(탭·틱·`fidgetMode` 인터페이스) + 점자 캔버스 + 모드 3개. 새 모드는 `fidgetMode` 를 구현하고 `app_fidget.go` 의 `modes` 에 한 줄 추가 |
-| `app_browser.go` `browser_parse.go` `browser_render.go` `browser_marks.go` `browser_kill_*.go` | 텍스트 웹 브라우저 앱(내려받기, 문자 코드 변환, 본문 추출, 줄바꿈, 제어문자 제거, 빠른 이동 목록·검색, 설치된 Chrome/Edge 로 자바스크립트 페이지 렌더링). 의존: golang.org/x/net, x/text |
+| `app_browser.go` `app_browser_live.go` `browser_cdp.go` `browser_snap.go` `browser_parse.go` `browser_render.go` `browser_marks.go` `browser_kill_*.go` | 웹 브라우저 앱. 라이브 모드(설치된 Chrome/Edge 를 DevTools 프로토콜로 조종, 페이지를 칸 격자에 그리고 방향키 가상 커서 + Enter 클릭, 입력창에 글자 입력)와 리더 모드(내려받기, 문자 코드 변환, 본문 추출, 줄바꿈, 제어문자 제거, 빠른 이동 목록·검색). 의존: golang.org/x/net(html, websocket), x/text |
 | `settings.go` | 홈 설정(배경·전환·조작부) 저장과 설정 화면. 저장 위치는 사용자 설정 폴더의 `TUI-playground/settings.json` |
 | `main_test.go` | 파싱, 예약 로직, 화면 정렬, 동기화 테스트 |
 | `shutdown.bat` | 예전 PowerShell 버전. 더 이상 개발하지 않고 그대로 보관함 |
@@ -60,3 +60,6 @@ go build -ldflags "-s -w" -o TUI-playground.exe .
 - 앱 테스트는 실제 네트워크와 실제 드라이브를 건드리지 않음 (`brWithFetch`, `scanTree` 를 가짜로 바꿔 끼움)
 - 이 세션 같은 환경에서 `NO_COLOR` 가 켜져 있으면 배경·전환이 꺼짐. 눈으로 확인할 때는 `set NO_COLOR=` 로 지우고 실행할 것
 - 웹 브라우저 테스트는 실제 브라우저(Chrome/Edge)를 띄우지 않음 (`TestMain` 이 `brFindEngine` 을 비워 둠). 실제 렌더링을 눈으로 확인할 때만 `brFindEngineDefault` 를 직접 끼워서 돌릴 것
+- 웹 브라우저 라이브 모드: Esc 는 입력 중이면 입력만 끝내고, 아니면 브라우저 세션을 닫고 홈으로 감 (Esc 는 언제나 홈이라는 규칙의 유일한 예외)
+- 라이브 모드 테스트는 가짜 `brOpenLive`/`fakeLive` 를 끼워 씀. 실제 Chrome 으로 확인할 때만 `TUI_LIVE_SMOKE=1 go test -run TestLiveSmoke -v` (로컬 서버 사용, `TUI_LIVE_URL` 로 주소 지정 가능)
+- 라이브 모드는 봇 탐지 우회(UA 위장, 자동화 표식 숨김 등)를 하지 않음. 자동화 접속을 막는 사이트는 열리지 않을 수 있고, 그때는 리더 모드(v)나 다른 주소로 안내함

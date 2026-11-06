@@ -19,3 +19,5 @@ func brKillTree(cmd *exec.Cmd) {
 	_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	_ = cmd.Process.Kill()
 }
+
+func brBindLife(cmd *exec.Cmd) {}

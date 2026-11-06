@@ -14,14 +14,14 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// 웹 브라우저(텍스트) (F-13). 주소를 열어 글 본문만 텍스트로 보여줌.
+// 웹 브라우저 (F-13). 설치된 Chrome/Edge 가 있으면 라이브 모드(app_browser_live.go)로 페이지를 칸 격자에 실제처럼 그리고 가상 커서로 조작하며, 없으면 글 본문만 텍스트로 보여주는 리더 모드로 읽음.
 // 이미지·쿠키·로그인은 지원하지 않음. 자바스크립트는 직접 실행하지 않고, 글이 비는 페이지만 설치된 브라우저(Chrome/Edge)로 다시 그려서 읽음 (browser_render.go). 페이지에서 온 글자는 화면에 닿기 전에 모두 거름 (browser_parse.go).
 // Esc 는 (불러오는 중이 아니면) 언제나 홈으로 감.
 
 var browserInfo = AppInfo{
 	ID:   "browser",
 	Name: "웹 브라우저",
-	Desc: "주소나 검색어로 글을 텍스트로 읽기",
+	Desc: "주소나 검색어로 웹 페이지를 보고 조작하기",
 	New:  func(env *Env) App { return newBrowserApp() },
 }
 
@@ -77,6 +77,7 @@ type browserApp struct {
 	msel   int      // 주소 화면에서 고른 항목 (-1 = 고르지 않음)
 
 	vw, vh int // 마지막으로 그린 본문 폭·높이
+	ls     brLiveState
 	layPg  *brPage
 	layW   int
 	lay    []brLine
@@ -108,6 +109,9 @@ func (a *browserApp) cancelLoad() {
 }
 
 func (a *browserApp) startLoad(raw string, reload bool) tea.Cmd {
+	if a.wantLive() {
+		return a.startLive(raw)
+	}
 	a.cancelLoad()
 	ctx, cancel := context.WithCancel(context.Background())
 	a.cancel = cancel
@@ -196,14 +200,14 @@ func (a *browserApp) step(d int) {
 func (a *browserApp) Update(msg tea.Msg) (App, tea.Cmd) {
 	switch m := msg.(type) {
 	case appTickMsg:
-		if m.Gen != a.gen || m.Tag != "load" || !a.loading {
-			return a, nil
-		}
-		a.frame++
-		return a, tickCmd(150*time.Millisecond, a.gen, "load")
+		return a, a.onAppTick(m)
 	case brDoneMsg:
 		a.onDone(m)
 		return a, nil
+	case brLiveMsg:
+		return a, a.onLiveMsg(m)
+	case tickMsg:
+		return a, a.resizeIfNeeded()
 	case tea.KeyMsg:
 		return a.onKey(m)
 	}
@@ -219,13 +223,19 @@ func (a *browserApp) onKey(k tea.KeyMsg) (App, tea.Cmd) {
 	s := k.String()
 	if a.loading {
 		if s == "esc" { // 요청을 취소하고 홈으로 (Esc 는 언제나 홈으로 감)
-			a.cancelLoad()
+			a.Close()
 			a.say("불러오기를 취소함", ToneInfo)
 			return a, goHome()
 		}
 		return a, nil
 	}
 	if s == "esc" {
+		if a.ls.on && a.ls.edit {
+			a.ls.edit = false
+			a.say("", ToneInfo)
+			return a, nil
+		}
+		a.Close()
 		return a, goHome()
 	}
 	switch a.mode {
@@ -240,6 +250,9 @@ func (a *browserApp) onKey(k tea.KeyMsg) (App, tea.Cmd) {
 		}
 		a.say("이동을 취소함", ToneInfo)
 		return a, nil
+	}
+	if a.ls.on {
+		return a.keyLive(k)
 	}
 	return a.keyRead(s)
 }
@@ -409,7 +422,7 @@ func (a *browserApp) View(c Ctx) string {
 
 	// 제목 줄, 주소 줄
 	title := sgBold(appNameBrowser, colorAccent)
-	urlLeft, pos := "주소를 입력하면 글을 텍스트로 보여줌", ""
+	urlLeft, pos := "주소를 입력하면 페이지를 터미널에 그려 줌", ""
 	if a.cur != nil {
 		title = sgBold(brTrunc(a.cur.Title, tw), colorText)
 		urlLeft = a.cur.URL
@@ -419,6 +432,9 @@ func (a *browserApp) View(c Ctx) string {
 			pct = bottom * 100 / len(lines)
 		}
 		pos = fmt.Sprintf("%d/%d  %d%%", bottom, len(lines), pct)
+		if a.ls.on {
+			pos = a.livePos()
+		}
 	}
 	urlCol := colorTextMuted
 	if a.mode == brConfirm {
@@ -437,6 +453,11 @@ func (a *browserApp) View(c Ctx) string {
 			} else {
 				f.Blank()
 			}
+		}
+	} else if a.ls.on && a.ls.scr != nil {
+		hover := a.hoverElem()
+		for i := 0; i < a.vh; i++ {
+			f.Row(a.liveRow(i, tw, hover)...)
 		}
 	} else {
 		for i := 0; i < a.vh; i++ {
@@ -461,6 +482,10 @@ func (a *browserApp) View(c Ctx) string {
 		f.MenuInline([2]string{"Enter", "이동"}, [2]string{"Backspace", "지움"}, [2]string{"Esc", "홈으로"})
 	case a.mode == brConfirm:
 		f.MenuInline([2]string{"y", "이동"}, [2]string{"n", "취소"}, [2]string{"Esc", "홈으로"})
+	case a.ls.on && a.ls.edit:
+		f.MenuInline([2]string{"글자", "입력"}, [2]string{"Enter", "제출"}, [2]string{"Tab", "입력 끝"}, [2]string{"Esc", "입력 끝"})
+	case a.ls.on:
+		f.MenuInline([2]string{"방향키", "커서"}, [2]string{"r", "다시"}, [2]string{"v", "리더"}, [2]string{"b", "저장"}, [2]string{"h/l", "뒤/앞"}, [2]string{"o", "주소"}, [2]string{"Tab", "다음 요소"}, [2]string{"Space", "스크롤"}, [2]string{"Enter", "클릭"}, [2]string{"Esc", "홈으로"})
 	default:
 		// 폭이 모자라면 두 번째 항목부터 빠지므로 덜 중요한 것을 앞쪽에 둠
 		f.MenuInline([2]string{"↑↓", "스크롤"}, [2]string{"r", "다시"}, [2]string{"m", "JS"}, [2]string{"b", "저장"}, [2]string{"h/l", "뒤/앞"}, [2]string{"o", "주소"}, [2]string{"번호", "링크"}, [2]string{"Esc", "홈으로"})
@@ -500,6 +525,11 @@ func (a *browserApp) statusLine(c Ctx, tw int) (string, Tone) {
 		return fmt.Sprintf("[%s] → %s", a.linkBuf, href), ToneInfo
 	case a.mode == brConfirm:
 		return "다른 사이트로 이동: " + brSiteHost(a.pending), ToneWarn
+	}
+	if a.ls.on && a.mode == brRead {
+		if m, t, ok := a.liveStatus(); ok {
+			return m, t
+		}
 	}
 	return a.msg, a.msgTone
 }

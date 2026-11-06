@@ -135,6 +135,8 @@ Code uses these names, never raw values. 값은 ANSI 16색 번호이고 실제 �
 | Treemap | 폴더 크기를 면적으로 보여주는 사각형 배치(squarified). 배경색 칸, 크기순, 작은 항목은 `기타 (N개)` 로 묶음. 창이 작으면 Bar row 목록으로 대체 | 디스크 사용량 |
 | Detail line | `▸ 이름   크기  부모의 N%` 한 줄 + 전체 경로 한 줄 | 디스크 사용량 |
 | Reader | 웹 페이지 본문을 박스 폭에 맞춰 줄바꿈해 스크롤로 읽음. 제목은 굵은 accent, 링크는 accent + `[n]`(muted), 인용 `│`·코드는 muted, 목록 `•`/`◦`. 페이지에서 온 글자는 제어문자를 모두 걸러서 출력함 | 웹 브라우저 |
+| Live page | 실제 Chrome/Edge 가 그린 페이지를 칸 격자에 옮겨 보여줌(위치는 픽셀을 칸으로 환산). 글자색은 페이지 색을 쓰지 않고 토큰만 씀: 제목·링크·버튼은 color.accent, 안내 글은 color.text-muted, 나머지 color.text. 위젯은 글자 모양으로 그림: 버튼 `[ 이름 ]`, 입력창 `[ 값 ]`, 선택 `[ 값 v ]`, 체크 `[x]`·`( )`·`(*)`, 이미지 `[이미지: 설명]` | 위젯, 가상 커서 | 웹 브라우저 |
+| Virtual cursor | 방향키로 칸 단위로 움직이는 가상 마우스 커서. 커서 칸은 color.on-state 글자 + color.text 배경, 커서 아래 요소는 color.on-state 글자 + color.accent 배경 굵게. 같은 방향을 빠르게 누르면 가로 이동 폭이 커짐. 커서 아래 링크 주소·요소 이름은 메시지 줄에 보임(다른 사이트는 color.warn) | 기본, 요소 위, 입력 중 | 웹 브라우저 |
 | Wheel | 현재 칸을 가운데(`▸` + 굵은 accent, 결정되면 color.ok)에 두고 앞뒤 메뉴를 color.text-muted 로 보여주는 5줄 목록. 메뉴가 적어도 5줄을 차지해 화면이 흔들리지 않음 | 점심 룰렛 |
 | Canvas | 점자 캔버스(칸당 가로 2 x 세로 4 점)로 그리는 그림 본문. 점이 거의 정사각형이라 원이 둥글게 나옴. 빈 칸은 공백, 색은 기존 토큰만 씀. `TUI_FIDGET=block` 이면 블록 문자 대체 | 멍때리기 |
 | Fidget tab | 모드 탭 줄(Tab row 재사용) + Canvas 본문 + 상태 줄. 본문 줄 수 = 창 높이 − 9 (3~14) | 멍때리기 |
@@ -159,3 +161,4 @@ Code uses these names, never raw values. 값은 ANSI 16색 번호이고 실제 �
 | 2026-11-05 | Meter, Sparkline, Tab row, Table, Bar row, Check row, Lap row 추가, List item 을 한 줄형으로 변경, 빨강 사용 원칙 문구 정정 | 앱 5개(F-07~F-11) 추가로 필요해짐. 기존 원칙이 오류에도 빨강을 쓰는 것과 어긋나 있었음 |
 | 2026-11-05 | 홈 배경 5종·화면 전환 4종·아케이드 조작부 예외와 Motion tokens 추가 | 재미 목적의 홈 꾸밈 기능(설정에서 선택·끔). 지침의 "움직임은 상태 설명용" 원칙에 맞게 위치와 끄는 방법을 제한함 |
 | 2026-11-05 | color.viz-1..6, color.select, Treemap·Detail line·Reader 추가. 조작부 버튼 글자를 실제 키(Enter/Esc)로, 전환의 흰색을 연한 하늘색으로 낮춤 | 앱 2개(F-12, F-13) 추가와 사용자 피드백(A/B는 없는 키, 흰색이 눈부심, 검정 선택은 선택 안 된 느낌) |
+| 2026-11-06 | Live page, Virtual cursor 추가 | 리더 모드가 폼·버튼·메뉴를 버려 조작이 어렵다는 피드백. 페이지를 실제처럼 그리고 가상 커서로 클릭하게 바꿈 |

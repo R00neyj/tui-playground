@@ -143,12 +143,18 @@ func (m model) update(msg tea.Msg) (model, tea.Cmd) {
 		return m, next
 
 	case goHomeMsg:
+		if c, ok := m.app.(interface{ Close() }); ok {
+			c.Close()
+		}
 		next := m
 		next.ph, next.app = phHome, nil
 		return m.withTransition(next, true), nil
 
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
+			if c, ok := m.app.(interface{ Close() }); ok {
+				c.Close()
+			}
 			return m, tea.Quit
 		}
 		if m.trans != nil { // 아무 키나 누르면 전환을 바로 끝냄

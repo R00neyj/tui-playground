@@ -172,7 +172,7 @@ func (a *browserApp) inputRows(tw int) [][]seg {
 	}
 	engine := "글이 비는 페이지를 다시 그릴 브라우저(Chrome, Edge)를 찾지 못함"
 	if exe := brFindEngine(); exe != "" {
-		engine = "글이 비는 페이지는 " + brEngineName(exe) + " 로 다시 그림 (읽는 중 m: 자동·항상·끔)"
+		engine = brEngineName(exe) + " 로 실제 페이지처럼 그림. 방향키로 커서를 움직여 Enter 로 클릭 (v: 글만 보기)"
 	}
 	tail := [][]seg{
 		{sg(brTrunc("단어를 입력하면 네이버에서 검색함. 주소는 점(.)이 있으면 됨", tw), colorTextMuted)},

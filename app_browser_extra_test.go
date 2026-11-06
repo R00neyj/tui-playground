@@ -373,6 +373,7 @@ func TestBrJSModeKeyAndRenderedNote(t *testing.T) {
 	web := &brFakeWeb{pages: map[string]string{"https://spa.test": spaDoc, "https://spa.test/": spaDoc}}
 	brWithFetch(t, web.fetch)
 	a := newBrowserApp()
+	a.ls.readerOnly = true // 이 테스트는 리더 모드의 자바스크립트 렌더링을 확인함
 	brOpen(t, a, "spa.test")
 	if a.cur == nil || !a.cur.Rendered || !strings.Contains(a.msg, "Edge") {
 		t.Fatalf("자동 모드에서 얇은 페이지는 브라우저로 다시 그려야 함: rendered=%v msg=%q", a.cur != nil && a.cur.Rendered, a.msg)
