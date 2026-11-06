@@ -98,22 +98,23 @@ func bubbleCheckRows(t *testing.T, rows [][]seg, cw, ch int) {
 	}
 }
 
-func TestBubbleSpacePopsAndAdvances(t *testing.T) {
+func TestBubbleSpacePopsInPlace(t *testing.T) {
 	m := newBubbleForTest()
 	if !m.Key(" ") {
 		t.Fatalf("Space 가 반응하지 않음")
 	}
-	if !m.popped[0] || m.cursor != 1 || m.count != 1 {
-		t.Errorf("첫 방울이 터지고 커서가 다음으로 가야 함: popped0=%v cursor=%d count=%d", m.popped[0], m.cursor, m.count)
+	if !m.popped[0] || m.cursor != 0 || m.count != 1 {
+		t.Errorf("방울이 터져도 커서는 그 자리에 있어야 함: popped0=%v cursor=%d count=%d", m.popped[0], m.cursor, m.count)
 	}
-	for _, k := range []string{"enter", "space"} {
+	if m.Key(" ") || m.count != 1 {
+		t.Errorf("터진 방울을 다시 누르면 무시해야 함")
+	}
+	for i, k := range []string{"enter", "space"} {
+		m.Key("right")
 		before := m.count
-		if !m.Key(k) || m.count != before+1 {
-			t.Errorf("%q 로 방울이 터지지 않음", k)
+		if !m.Key(k) || m.count != before+1 || m.cursor != i+1 {
+			t.Errorf("%q 로 방울이 터지지 않거나 커서가 움직임: cursor=%d", k, m.cursor)
 		}
-	}
-	if m.cursor != 3 {
-		t.Errorf("연속으로 누르면 행 우선으로 이어져야 함: cursor=%d", m.cursor)
 	}
 	if m.Status() != "터뜨림 3/40" {
 		t.Errorf("Status: %q", m.Status())
@@ -169,19 +170,14 @@ func TestBubbleCursorMoves(t *testing.T) {
 	}
 }
 
-func TestBubbleCursorSkipsPoppedAndWraps(t *testing.T) {
+func TestBubblePopNeverMovesCursor(t *testing.T) {
 	m := newBubbleForTest()
-	m.cursor = 5
-	m.Key(" ")
-	m.cursor = 4
-	m.Key(" ")
-	if m.cursor != 6 {
-		t.Errorf("터진 방울을 건너뛰어야 함: %d", m.cursor)
-	}
-	m.cursor = bubbleCount - 1
-	m.Key(" ")
-	if m.cursor != 0 {
-		t.Errorf("끝에서 처음으로 이어져야 함: %d", m.cursor)
+	for _, c := range []int{0, 5, bubbleCols, bubbleCount - 1} {
+		m.cursor = c
+		m.Key(" ")
+		if m.cursor != c || !m.popped[c] {
+			t.Errorf("칸 %d: 터뜨린 뒤 커서=%d popped=%v", c, m.cursor, m.popped[c])
+		}
 	}
 }
 
@@ -215,11 +211,12 @@ func TestBubbleStepStopsAfterAnyKeyMash(t *testing.T) {
 	}
 }
 
-func TestBubblePopAllInFortyPresses(t *testing.T) {
+func TestBubblePopAllFortyBubbles(t *testing.T) {
 	m := newBubbleForTest()
 	for i := 0; i < bubbleCount; i++ {
+		m.cursor = i
 		if !m.Key(" ") {
-			t.Fatalf("%d번째 Space 가 무시됨", i+1)
+			t.Fatalf("%d번째 칸 Space 가 무시됨", i+1)
 		}
 		m.Step()
 	}
@@ -387,8 +384,8 @@ func TestBubbleStateSurvivesResize(t *testing.T) {
 	m := newBubbleForTest()
 	for i := 0; i < 9; i++ {
 		m.Key(" ")
+		m.Key("right")
 	}
-	m.Key("right")
 	before := *m
 	small := bubbleFlat(m.Rows(46, 8))
 	for _, sz := range [][2]int{{200, 14}, {3, 3}, {1, 1}, {80, 5}} {

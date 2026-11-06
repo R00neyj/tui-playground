@@ -73,12 +73,6 @@ func (m *bubbleMode) pop() bool {
 	m.popped[m.cursor] = true
 	m.anim[m.cursor] = 1
 	m.count++
-	for i := 1; i < bubbleCount; i++ {
-		if next := (m.cursor + i) % bubbleCount; !m.popped[next] {
-			m.cursor = next
-			break
-		}
-	}
 	return true
 }
 
