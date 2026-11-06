@@ -28,6 +28,7 @@ const (
 	brOpenTimeout  = 20 * time.Second
 	brSettleMax    = 12 * time.Second
 	brActionBudget = 60 * time.Second
+	brSettleTries  = 6 // 불러온·움직인 뒤 늦게 뜨는 내용을 따라가려고 화면을 다시 읽는 횟수
 )
 
 var errBrLiveGone = errors.New("브라우저가 종료됨")
@@ -202,7 +203,7 @@ func brOpenChrome(ctx context.Context, exe string, cols, rows int) (*brChrome, e
 	}
 	args := []string{
 		"--headless=new", "--disable-gpu", "--disable-extensions", "--disable-sync", "--no-first-run",
-		"--no-default-browser-check", "--mute-audio", "--hide-scrollbars", "--lang=ko-KR",
+		"--no-default-browser-check", "--mute-audio", "--hide-scrollbars", "--lang=ko-KR", "--disable-smooth-scrolling",
 		"--remote-debugging-port=0", "--remote-allow-origins=http://localhost",
 		"--user-data-dir=" + dir, "about:blank",
 	}
@@ -458,7 +459,14 @@ func (b *brChrome) Snapshot(ctx context.Context) (*brSnap, error) {
 	if err := b.eval(ctx, brSnapJS, &raw); err != nil {
 		return nil, err
 	}
-	return brParseSnap(raw)
+	s, err := brParseSnap(raw)
+	if err != nil {
+		return nil, err
+	}
+	if brHasPics(s) {
+		s.Shot = b.capture(ctx, s.VW, s.VH)
+	}
+	return s, nil
 }
 
 func (b *brChrome) mouse(ctx context.Context, typ string, x, y float64, extra map[string]any) error {
@@ -531,7 +539,7 @@ func (b *brChrome) Scroll(ctx context.Context, x, y, dy float64) error {
 	if err := b.mouse(ctx, "mouseWheel", x, y, map[string]any{"deltaX": 0, "deltaY": dy}); err != nil {
 		return err
 	}
-	return brSleep(ctx, 250*time.Millisecond)
+	return brSleep(ctx, 120*time.Millisecond)
 }
 
 func (b *brChrome) ScrollTo(ctx context.Context, top bool) error {

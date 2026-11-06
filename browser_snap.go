@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"image"
 	"math"
 	"sort"
 	"strings"
@@ -128,13 +129,14 @@ function visit(n,ctx,depth){
     const r=n.getBoundingClientRect();
     if(r.width>=48&&r.height>=24&&r.bottom+oy>0&&r.top+oy<vh){
       const alt=clean(n.alt).slice(0,60);
-      texts.push({t:alt?'[이미지: '+alt+']':'[이미지]',x:r.left+ox,y:r.top+oy,w:r.width,h:Math.min(r.height,40),f:c.f,b:0,hd:0,k:1});
+      const top=Math.max(r.top+oy,0),bot=Math.min(r.bottom+oy,vh);
+      texts.push({t:alt?'[이미지: '+alt+']':'[이미지]',x:r.left+ox,y:top,w:r.width,h:Math.min(bot-top,40),f:c.f,b:0,hd:0,k:1,th:bot-top});
     }
     return;
   }
   if(tag==='VIDEO'){
     const r=n.getBoundingClientRect();
-    if(r.width>=48&&r.bottom+oy>0&&r.top+oy<vh)texts.push({t:'[영상]',x:r.left+ox,y:r.top+oy,w:r.width,h:Math.min(r.height,40),f:c.f,b:0,hd:0,k:1});
+    if(r.width>=48&&r.bottom+oy>0&&r.top+oy<vh){const top=Math.max(r.top+oy,0),bot=Math.min(r.bottom+oy,vh);texts.push({t:'[영상]',x:r.left+ox,y:top,w:r.width,h:Math.min(bot-top,40),f:c.f,b:0,hd:0,k:1,th:bot-top})}
     return;
   }
   if(n.matches(SEL)){
@@ -151,7 +153,7 @@ function visit(n,ctx,depth){
 visit(document.body||document.documentElement,{f:-1,b:false,hd:0},0);
 window.__tui=els;
 const se=document.scrollingElement||document.documentElement;
-return JSON.stringify({u:location.href,t:document.title,sy:se.scrollTop,dh:se.scrollHeight,vh:vh,texts:texts,elems:recs});
+return JSON.stringify({u:location.href,t:document.title,sy:se.scrollTop,dh:se.scrollHeight,vh:vh,vw:vw,texts:texts,elems:recs});
 })()`
 
 // ---- 받은 내용 ----
@@ -166,6 +168,7 @@ type brSnapText struct {
 	B  int     `json:"b"`
 	H1 int     `json:"hd"`
 	K  int     `json:"k"`
+	TH float64 `json:"th"`
 }
 
 type brSnapElem struct {
@@ -189,8 +192,10 @@ type brSnap struct {
 	SY    float64      `json:"sy"`
 	DH    float64      `json:"dh"`
 	VH    float64      `json:"vh"`
+	VW    float64      `json:"vw"`
 	Texts []brSnapText `json:"texts"`
 	Elems []brSnapElem `json:"elems"`
+	Shot  image.Image `json:"-"`
 }
 
 func brFinite(f float64) float64 {
@@ -211,7 +216,7 @@ func brParseSnap(raw string) (*brSnap, error) {
 	}
 	s.URL = brClip(brClean(s.URL), brMaxURL)
 	s.Title = brClip(brCollapse(s.Title), 200)
-	s.SY, s.DH, s.VH = brFinite(s.SY), brFinite(s.DH), brFinite(s.VH)
+	s.SY, s.DH, s.VH, s.VW = brFinite(s.SY), brFinite(s.DH), brFinite(s.VH), brFinite(s.VW)
 	if len(s.Texts) > brMaxSnapTexts {
 		s.Texts = s.Texts[:brMaxSnapTexts]
 	}
@@ -221,6 +226,7 @@ func brParseSnap(raw string) (*brSnap, error) {
 	for i := range s.Texts {
 		t := &s.Texts[i]
 		t.T = brClip(brCollapse(t.T), 300)
+		t.TH = math.Max(0, brFinite(t.TH))
 		t.X, t.Y, t.W, t.H = brFinite(t.X), brFinite(t.Y), brFinite(t.W), math.Max(1, brFinite(t.H))
 		if t.F >= len(s.Elems) || t.F < -1 {
 			t.F = -1
@@ -247,6 +253,7 @@ const (
 	biMuted
 	biBracket // 버튼·입력창·체크박스 같은 위젯
 	biHint    // 입력창의 안내 글(placeholder)
+	biPic     // 이미지 (캡처에서 색을 따와 그림)
 )
 
 type brItem struct {
@@ -255,6 +262,8 @@ type brItem struct {
 	kind brItemKind
 	bold bool
 	elem int // 이 글자가 속한 누를 수 있는 요소 (없으면 -1)
+	pic  *brPic
+	band int // pic 안에서 몇 번째 칸 줄인지
 }
 
 func (it brItem) width() int { return lipgloss.Width(it.text) }
@@ -271,14 +280,18 @@ type brScreen struct {
 
 type brCand struct {
 	x, y, w, h float64
+	tall       float64
 	text       string
 	kind       brItemKind
 	bold       bool
 	elem       int
+	pic        *brPic
+	ext        float64
 }
 
 type brCluster struct {
 	cy, top, bottom, h float64
+	tall               float64
 	items              []brCand
 }
 
@@ -334,6 +347,9 @@ func brLayoutSnap(s *brSnap, cols int) *brScreen {
 		if t.T == "" {
 			continue
 		}
+		if t.F >= len(s.Elems) || t.F < -1 {
+			t.F = -1
+		}
 		if t.F >= 0 && s.Elems[t.F].Widget == 1 && s.Elems[t.F].Kind != "link" {
 			continue
 		}
@@ -349,7 +365,13 @@ func brLayoutSnap(s *brSnap, cols int) *brScreen {
 		if t.F >= 0 {
 			hasText[t.F] = true
 		}
-		cands = append(cands, brCand{x: t.X, y: t.Y, w: t.W, h: t.H, text: t.T, kind: kind, bold: t.B == 1 || t.H1 > 0, elem: t.F})
+		if t.K == 1 && s.Shot != nil {
+			if c, ok := brPicCand(s, t, cols); ok {
+				cands = append(cands, c)
+				continue
+			}
+		}
+		cands = append(cands, brCand{x: t.X, y: t.Y, w: t.W, h: t.H, text: t.T, kind: kind, bold: t.B == 1 || t.H1 > 0, elem: t.F, tall: t.TH})
 	}
 	for i, e := range s.Elems {
 		txt, kind, ok := brWidgetText(e, cols)
@@ -363,7 +385,11 @@ func brLayoutSnap(s *brSnap, cols int) *brScreen {
 			}
 			txt, kind = brWrapBracket(brTrunc(l, 40)), biLink
 		}
-		cands = append(cands, brCand{x: e.X, y: e.Y, w: e.W, h: math.Min(e.H, 40), text: txt, kind: kind, elem: i})
+		top, bot := e.Y, e.Y+e.H
+		if s.VH > 0 {
+			top, bot = math.Max(top, 0), math.Min(bot, s.VH)
+		}
+		cands = append(cands, brCand{x: e.X, y: top, w: e.W, h: math.Max(1, math.Min(bot-top, 40)), text: txt, kind: kind, elem: i})
 	}
 	if len(cands) > 0 {
 		minX := cands[0].x
@@ -389,12 +415,13 @@ func brLayoutSnap(s *brSnap, cols int) *brScreen {
 		if n := len(cls); n > 0 && cy-cls[n-1].cy <= math.Min(cls[n-1].h, c.h)*0.55 {
 			k := cls[n-1]
 			k.cy = (k.cy*float64(len(k.items)) + cy) / float64(len(k.items)+1)
-			k.top, k.bottom = math.Min(k.top, c.y), math.Max(k.bottom, c.y+c.h)
+			k.top, k.bottom = math.Min(k.top, c.y), math.Max(k.bottom, c.y+math.Max(c.h, c.ext))
 			k.h = math.Max(k.h, c.h)
+			k.tall = math.Max(k.tall, c.tall)
 			k.items = append(k.items, c)
 			continue
 		}
-		cls = append(cls, &brCluster{cy: cy, top: c.y, bottom: c.y + c.h, h: c.h, items: []brCand{c}})
+		cls = append(cls, &brCluster{cy: cy, top: c.y, bottom: c.y + math.Max(c.h, c.ext), h: c.h, tall: c.tall, items: []brCand{c}})
 	}
 	sc.elemP = make([][2]int, len(s.Elems))
 	for i := range sc.elemP {
@@ -424,12 +451,24 @@ func brLayoutSnap(s *brSnap, cols int) *brScreen {
 			sc.rowY = append(sc.rowY, k.cy)
 			row++
 		}
+		row = brPicRowsBelow(sc, main, row)
+		if k.tall >= 72 {
+			n := min(7, int(k.tall/36)-1)
+			for i := 1; i <= n; i++ {
+				sc.rows = append(sc.rows, nil)
+				sc.rowY = append(sc.rowY, k.top+float64(i)*k.tall/float64(n+1))
+				row++
+			}
+		}
 	}
 	return sc
 }
 
 // brWordWrap 은 공백에서 줄을 바꾸고, 한 낱말이 w 보다 길면 글자 단위로 자름
 func brWordWrap(s string, w int) []string {
+	if w < 1 {
+		return nil
+	}
 	var out []string
 	cur := ""
 	for _, word := range strings.Fields(s) {
@@ -438,8 +477,15 @@ func brWordWrap(s string, w int) []string {
 				out, cur = append(out, cur), ""
 			}
 			parts := brHardWrap(word, w)
+			if len(parts) < 2 { // 칸이 모자라 더 못 쪼개면 들어가는 만큼만 남김 (무한 반복 방지)
+				word = brTrunc(word, w)
+				break
+			}
 			out = append(out, parts[:len(parts)-1]...)
 			word = parts[len(parts)-1]
+		}
+		if word == "" {
+			continue
 		}
 		switch {
 		case cur == "":
@@ -477,6 +523,9 @@ func brPlaceRow(items []brCand, cols int) ([]brItem, [][]brItem) {
 			continue
 		}
 		txt := c.text
+		if c.kind == biPic && lipgloss.Width(txt) > cols-col {
+			txt = brSpaces(cols - col)
+		}
 		if c.kind == biBracket && lipgloss.Width(txt) > cols-col {
 			txt = brTrunc(txt, cols-col)
 		}
@@ -493,7 +542,7 @@ func brPlaceRow(items []brCand, cols int) ([]brItem, [][]brItem) {
 				extra[n] = append(extra[n], brItem{col: col, text: p, kind: c.kind, bold: c.bold, elem: c.elem})
 			}
 		}
-		it := brItem{col: col, text: txt, kind: c.kind, bold: c.bold, elem: c.elem}
+		it := brItem{col: col, text: txt, kind: c.kind, bold: c.bold, elem: c.elem, pic: c.pic}
 		out = append(out, it)
 		prevEnd, prevElem, prevRight = col+it.width(), c.elem, c.x+c.w
 	}
@@ -512,6 +561,9 @@ func (sc *brScreen) cellPx(row, col int) (x, y float64) {
 		y = sc.rowY[max(0, row)]
 	default:
 		y = sc.rowY[len(sc.rowY)-1] + float64(row-len(sc.rowY)+1)*brCellH
+	}
+	if sc.snap != nil && sc.snap.VH > 1 {
+		y = math.Max(1, math.Min(y, sc.snap.VH-1))
 	}
 	return x, y
 }

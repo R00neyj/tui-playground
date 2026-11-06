@@ -1,6 +1,10 @@
 package main
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"fmt"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 // 앱 이름 (DESIGN.md 헤더, 인트로 부제목, 창 제목)
 const appName = "터미널 플레이그라운드"
@@ -59,3 +63,8 @@ var (
 
 // 선택된 칸 바탕 (트리맵 등). 흰색은 눈부시고 검정은 선택 안 된 것처럼 보여서 짙은 파랑을 씀
 var colorSelect = lipgloss.Color("4")
+
+// 웹 브라우저 이미지 칸 그림 전용: 페이지 캡처에서 따온 실제 색 (토큰 아님)
+func colorPicture(r, g, b float64) lipgloss.Color {
+	return lipgloss.Color(fmt.Sprintf("#%02x%02x%02x", int(r), int(g), int(b)))
+}

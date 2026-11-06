@@ -11,6 +11,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // 실제 Chrome/Edge 를 띄우는 확인용 테스트. TUI_LIVE_SMOKE=1 일 때만 돌고, 로컬 테스트 서버만 씀.
@@ -169,5 +170,79 @@ func liveRunWait(t *testing.T, a *browserApp, cmd tea.Cmd) {
 			liveRunWait(t, a, next)
 		}
 	case <-time.After(25 * time.Second):
+	}
+}
+
+func TestLiveSmokeScrollLag(t *testing.T) {
+	u := os.Getenv("TUI_LIVE_URL")
+	if os.Getenv("TUI_LIVE_SMOKE") == "" || u == "" {
+		t.Skip("TUI_LIVE_SMOKE 와 TUI_LIVE_URL 이 있을 때만 돌림")
+	}
+	exe := brFindEngineDefault()
+	if exe == "" {
+		t.Skip("Chrome/Edge 없음")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+	ch, err := brOpenChrome(ctx, exe, 90, 21)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ch.Close()
+	if err := ch.Navigate(ctx, u); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 8; i++ {
+		if err := ch.Scroll(ctx, 40, 100, 340); err != nil {
+			t.Fatal(err)
+		}
+		t0 := time.Now()
+		a, _ := ch.Snapshot(ctx)
+		t.Logf("snapshot %v", time.Since(t0))
+		time.Sleep(1200 * time.Millisecond)
+		b, _ := ch.Snapshot(ctx)
+		la, lb := brLayoutSnap(a, 90), brLayoutSnap(b, 90)
+		if i == 7 {
+			for _, r := range lb.rows {
+				line := ""
+				for _, it := range r {
+					line += strings.Repeat(" ", max(0, it.col-lipglossWidth(line))) + it.text
+				}
+				t.Log(line)
+			}
+		}
+		t.Logf("step %d: 직후 sy=%.0f texts=%d rows=%d | 1.2초 뒤 sy=%.0f texts=%d rows=%d", i, a.SY, len(a.Texts), len(la.rows), b.SY, len(b.Texts), len(lb.rows))
+	}
+}
+
+func lipglossWidth(s string) int { return lipgloss.Width(s) }
+
+func TestLiveSmokeAppScroll(t *testing.T) {
+	u := os.Getenv("TUI_LIVE_URL")
+	if os.Getenv("TUI_LIVE_SMOKE") == "" || u == "" {
+		t.Skip("TUI_LIVE_SMOKE 와 TUI_LIVE_URL 이 있을 때만 돌림")
+	}
+	oldF := brFindEngine
+	brFindEngine = brFindEngineDefault
+	defer func() { brFindEngine = oldF }()
+	a := newBrowserApp()
+	defer a.Close()
+	c := testCtx(100, 30)
+	a.View(c)
+	a.Update(key("o"))
+	a.input.SetValue(u)
+	_, cmd := a.Update(key("enter"))
+	liveRunWait(t, a, cmd)
+	a.View(c)
+	for i := 0; i < 6; i++ {
+		t0 := time.Now()
+		_, cmd = a.Update(brKey(" "))
+		liveRunWait(t, a, cmd)
+		a.View(c)
+		x, y := a.ls.scr.cellPx(a.ls.prow, a.ls.pcol)
+		if i == 4 {
+			t.Log("\n" + a.View(c))
+		}
+		t.Logf("space %d: %v sy=%.0f rows=%d cursor=(%d,%d)→px(%.0f,%.0f) vh=%d", i, time.Since(t0).Round(time.Millisecond), a.ls.snap.SY, len(a.ls.scr.rows), a.ls.prow, a.ls.pcol, x, y, a.vh)
 	}
 }

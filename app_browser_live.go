@@ -29,6 +29,7 @@ type brAct struct {
 type brLiveMsg struct {
 	Req   int
 	Act   bool
+	Moved bool // 스크롤·클릭처럼 페이지를 바꿀 수 있는 동작이 들어 있음 (잠시 뒤 한 번 더 읽음)
 	Live  brLive
 	Snap  *brSnap
 	Page  *brPage // 라이브가 실패해 리더 모드로 읽은 결과
@@ -44,12 +45,18 @@ type brLiveState struct {
 	snap       *brSnap
 	scr        *brScreen
 	prow, pcol int
+	roff       int // 계산된 줄이 화면보다 많을 때 화면 맨 윗줄이 가리키는 줄
 	edit       bool
 	queue      []brAct
 	busy       bool
 	cols, rows int // 세션 화면 크기
 	lastMove   time.Time
 	lastDir    int
+	refreshing bool
+	settle     int // 늦게 그려지는 내용을 따라가려고 남은 다시 읽기 횟수
+	fitted     bool // 줄이 화면보다 많아서 브라우저 화면 높이를 줄인 상태
+	fitTries   int
+	noFit      bool
 	streak     int
 }
 
@@ -78,6 +85,11 @@ func (a *browserApp) startLive(raw string) tea.Cmd {
 	a.say("", ToneInfo)
 	req, live, cols, rows, exe := a.req, a.ls.live, a.vw, a.vh+1, brFindEngine()
 	fetch, render, mode := browserFetch, browserRender, a.jsMode
+	regrow := a.ls.fitted && live != nil
+	if regrow {
+		a.ls.fitted, a.ls.rows = false, rows
+	}
+	a.ls.fitTries = 0
 	if live == nil {
 		a.ls.cols, a.ls.rows = cols, rows
 	}
@@ -93,6 +105,9 @@ func (a *browserApp) startLive(raw string) tea.Cmd {
 			opened = err == nil
 		}
 		var snap *brSnap
+		if err == nil && regrow {
+			err = live.Resize(ctx, cols, rows)
+		}
 		if err == nil {
 			err = live.Navigate(ctx, norm)
 		}
@@ -157,15 +172,22 @@ func (a *browserApp) onLiveMsg(m brLiveMsg) tea.Cmd {
 	} else {
 		a.ls.prow, a.ls.pcol = 0, 0
 	}
+	a.showRow(a.ls.prow)
+	fit := a.refit()
 	if brSameSite(m.Asked, m.Snap.URL) {
 		a.say("", ToneInfo)
 	} else {
 		a.say("다른 사이트로 이동됨: "+brClip(brSiteHost(m.Snap.URL), 60), ToneWarn)
 	}
-	return tickCmd(1500*time.Millisecond, a.gen, "lrefresh")
+	a.ls.settle, a.ls.refreshing = brSettleTries-1, true
+	return tea.Batch(fit, tickCmd(1500*time.Millisecond, a.gen, "lrefresh"))
 }
 
 func (a *browserApp) applySnap(s *brSnap) {
+	prevSY, prevURL := 0.0, ""
+	if a.ls.snap != nil {
+		prevSY, prevURL = a.ls.snap.SY, a.ls.snap.URL
+	}
 	a.ls.snap = s
 	a.ls.scr = brLayoutSnap(s, max(1, a.ls.cols))
 	title := s.Title
@@ -173,8 +195,12 @@ func (a *browserApp) applySnap(s *brSnap) {
 		title = brSiteHost(s.URL)
 	}
 	a.cur = &brPage{URL: s.URL, Title: title}
-	a.ls.prow = max(0, min(a.ls.prow, max(0, a.vh-1)))
 	a.ls.pcol = max(0, min(a.ls.pcol, max(0, a.ls.cols-1)))
+	if s.SY != prevSY || s.URL != prevURL {
+		a.ls.roff = 0
+	}
+	a.ls.roff = max(0, min(a.ls.roff, len(a.ls.scr.rows)-a.vh))
+	a.ls.prow = max(a.ls.roff, min(a.ls.prow, a.ls.roff+max(0, a.vh-1)))
 }
 
 // ---- 동작 대기열 ----
@@ -238,6 +264,10 @@ func (a *browserApp) pump() tea.Cmd {
 		return nil
 	}
 	acts := brMergeActs(a.ls.queue)
+	moved := false
+	for _, x := range acts {
+		moved = moved || (x.kind != "snap" && x.kind != "resize")
+	}
 	a.ls.queue, a.ls.busy = nil, true
 	live, req := a.ls.live, a.req
 	run := func() tea.Msg {
@@ -253,7 +283,7 @@ func (a *browserApp) pump() tea.Cmd {
 		if err == nil {
 			snap, err = live.Snapshot(ctx)
 		}
-		return brLiveMsg{Req: req, Act: true, Snap: snap, Err: err}
+		return brLiveMsg{Req: req, Act: true, Moved: moved, Snap: snap, Err: err}
 	}
 	return tea.Batch(run, tickCmd(150*time.Millisecond, a.gen, "busy"))
 }
@@ -277,14 +307,42 @@ func (a *browserApp) onActDone(m brLiveMsg) tea.Cmd {
 	if a.ls.snap != nil {
 		prev = a.ls.snap.URL
 	}
+	if m.Moved {
+		a.ls.fitTries = 0
+	}
 	a.applySnap(m.Snap)
+	fit := a.refit()
 	if m.Snap.URL != prev {
 		a.ls.edit = false
 		if !brSameSite(prev, m.Snap.URL) {
 			a.say("다른 사이트로 이동됨: "+brClip(brSiteHost(m.Snap.URL), 60), ToneWarn)
 		}
 	}
-	return a.pump()
+	if m.Moved {
+		a.ls.settle = brSettleTries
+	}
+	if a.ls.settle > 0 && !a.ls.refreshing {
+		a.ls.refreshing = true
+		a.ls.settle--
+		return tea.Batch(fit, a.pump(), tickCmd(900*time.Millisecond, a.gen, "lrefresh"))
+	}
+	return tea.Batch(fit, a.pump())
+}
+
+// refit 은 칸 줄이 화면 줄보다 많으면 브라우저 화면 높이를 줄여 한 화면에 다 들어오게 함
+func (a *browserApp) refit() tea.Cmd {
+	l := &a.ls
+	n := len(l.scr.rows)
+	if l.noFit || n <= a.vh || l.fitTries >= 3 || l.rows <= 6 {
+		return nil
+	}
+	nr := max(6, l.rows*a.vh/n)
+	if nr >= l.rows {
+		return nil
+	}
+	l.rows, l.fitted = nr, true
+	l.fitTries++
+	return a.act(brAct{kind: "resize", cols: l.cols, rows: nr})
 }
 
 // resizeIfNeeded 는 창 크기가 바뀌었을 때 세션 화면 크기를 맞춤
@@ -292,10 +350,10 @@ func (a *browserApp) resizeIfNeeded() tea.Cmd {
 	if !a.ls.on || a.ls.live == nil || a.loading || a.ls.cols <= 0 {
 		return nil
 	}
-	if a.vw == a.ls.cols && a.vh <= a.ls.rows && a.vh >= a.ls.rows-4 {
+	if a.vw == a.ls.cols && a.vh <= a.ls.rows && (a.ls.fitted || a.vh >= a.ls.rows-4) {
 		return nil
 	}
-	a.ls.cols, a.ls.rows = a.vw, a.vh
+	a.ls.cols, a.ls.rows, a.ls.fitted, a.ls.fitTries = a.vw, a.vh, false, 0
 	return a.act(brAct{kind: "resize", cols: a.vw, rows: a.vh})
 }
 
@@ -311,11 +369,8 @@ func (a *browserApp) scrollAct(dy float64) brAct {
 }
 
 func (a *browserApp) pageDy() float64 {
-	if sc := a.ls.scr; sc != nil && len(sc.rowY) > 1 {
-		n := min(a.vh, len(sc.rowY)) - 1
-		if span := sc.rowY[n] - sc.rowY[0]; span > brCellH*4 {
-			return span * 0.9
-		}
+	if s := a.ls.snap; s != nil && s.VH > 0 {
+		return s.VH * 0.9
 	}
 	return float64(a.vh) * brCellH * 0.9
 }
@@ -342,8 +397,9 @@ func (a *browserApp) keyLive(k tea.KeyMsg) (App, tea.Cmd) {
 		if s == "shift+tab" {
 			dir = -1
 		}
-		if r, c, ok := a.ls.scr.nextAnchor(a.ls.prow, a.ls.pcol, dir); ok && r < a.vh {
+		if r, c, ok := a.ls.scr.nextAnchor(a.ls.prow, a.ls.pcol, dir); ok {
 			a.ls.prow, a.ls.pcol = r, min(c, a.vw-1)
+			a.showRow(r)
 		} else {
 			a.say("누를 수 있는 곳이 없음", ToneInfo)
 		}
@@ -352,9 +408,9 @@ func (a *browserApp) keyLive(k tea.KeyMsg) (App, tea.Cmd) {
 	case "k":
 		return a, a.act(a.scrollAct(-brCellH * 2))
 	case " ", "pgdown", "ctrl+f":
-		return a, a.act(a.scrollAct(a.pageDy()))
+		return a, a.pageMove(1)
 	case "pgup", "ctrl+b":
-		return a, a.act(a.scrollAct(-a.pageDy()))
+		return a, a.pageMove(-1)
 	case "g", "home":
 		return a, a.act(brAct{kind: "top"})
 	case "G", "end":
@@ -407,12 +463,20 @@ func (a *browserApp) moveCursor(dr, dc int) tea.Cmd {
 	nr, nc := l.prow+dr*stepR, l.pcol+dc*stepC
 	var cmd tea.Cmd
 	switch {
-	case nr < 0:
-		cmd = a.act(a.scrollAct(-brCellH * 3))
-		nr = 0
-	case nr >= a.vh:
-		cmd = a.act(a.scrollAct(brCellH * 3))
-		nr = max(0, a.vh-1)
+	case nr < l.roff:
+		if l.roff > 0 {
+			l.roff = max(0, nr)
+		} else {
+			cmd = a.act(a.scrollAct(-brCellH * 3))
+			nr = 0
+		}
+	case nr >= l.roff+a.vh:
+		if l.roff+a.vh < len(l.scr.rows) {
+			l.roff = min(nr-a.vh+1, len(l.scr.rows)-a.vh)
+		} else {
+			cmd = a.act(a.scrollAct(brCellH * 3))
+			nr = l.roff + max(0, a.vh-1)
+		}
 	}
 	l.prow = nr
 	l.pcol = max(0, min(nc, max(0, a.vw-1)))
@@ -499,6 +563,7 @@ func brItemStyle(k brItemKind, bold bool) (lipgloss.Color, bool) {
 
 // liveRow 는 칸 격자 한 줄을 색 입힌 조각들로 만듦. 커서 칸과 커서 아래 요소는 눈에 띄게 칠함.
 func (a *browserApp) liveRow(r, tw int, hover int) []seg {
+	r += a.ls.roff
 	var cells []brCell
 	var items []brItem
 	if r < len(a.ls.scr.rows) {
@@ -509,6 +574,10 @@ func (a *browserApp) liveRow(r, tw int, hover int) []seg {
 			cells = append(cells, brCell{s: " ", w: 1, fg: colorText, elem: -1})
 		}
 		if len(cells) > it.col {
+			continue
+		}
+		if it.kind == biPic && a.ls.snap != nil && a.ls.snap.Shot != nil {
+			cells = append(cells, brPicCells(a.ls.snap, it)...)
 			continue
 		}
 		fgc, bold := brItemStyle(it.kind, it.bold)
@@ -629,9 +698,38 @@ func (a *browserApp) onAppTick(m appTickMsg) tea.Cmd {
 		a.frame++
 		return tickCmd(150*time.Millisecond, a.gen, "busy")
 	case "lrefresh":
+		a.ls.refreshing = false
 		if a.ls.on && !a.ls.busy && !a.loading {
 			return a.act(brAct{kind: "snap"})
 		}
 	}
+	return nil
+}
+
+// showRow 는 r 번째 줄이 화면에 보이도록 줄 창을 옮김
+func (a *browserApp) showRow(r int) {
+	l := &a.ls
+	switch {
+	case r < l.roff:
+		l.roff = r
+	case r >= l.roff+a.vh:
+		l.roff = r - a.vh + 1
+	}
+	l.roff = max(0, min(l.roff, max(0, len(l.scr.rows)-a.vh)))
+}
+
+// pageMove 는 한 화면씩 넘김: 아직 안 보인 줄이 있으면 줄 창을 먼저 옮기고, 끝에 닿으면 페이지를 스크롤함
+func (a *browserApp) pageMove(dir int) tea.Cmd {
+	l := &a.ls
+	step := max(1, a.vh-1)
+	switch {
+	case dir > 0 && l.roff+a.vh < len(l.scr.rows):
+		l.roff = min(l.roff+step, len(l.scr.rows)-a.vh)
+	case dir < 0 && l.roff > 0:
+		l.roff = max(0, l.roff-step)
+	default:
+		return a.act(a.scrollAct(float64(dir) * a.pageDy()))
+	}
+	l.prow = max(l.roff, min(l.prow, l.roff+a.vh-1))
 	return nil
 }

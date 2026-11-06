@@ -75,7 +75,7 @@ func (m model) appGrid(c Ctx) *grid {
 	return m.composeGrid(c, m.app.View(c2), arc, "뒤로")
 }
 
-// composeGrid 는 배경 위에 박스를 가운데 놓고, arcade 면 박스 바로 아래에 조작부를 붙임
+// composeGrid 는 배경 위에 박스를 가운데 놓고, arcade 면 창 맨 아래에 조작부를 놓음 (박스는 그 위 공간의 가운데)
 func (m model) composeGrid(c Ctx, box string, arcade bool, label string) *grid {
 	g := newGrid(c.W, c.H)
 	panel := ""
@@ -85,14 +85,14 @@ func (m model) composeGrid(c Ctx, box string, arcade bool, label string) *grid {
 	}
 	bw, bh := boxSize(box)
 	bg := parseGrid(box, bw, bh)
-	total := bh
+	area := c.H
 	if arcade {
-		total += arcadeH
+		area -= arcadeH
 	}
-	x0, y0 := max(0, (c.W-bw)/2), max(0, (c.H-total)/2)
+	x0, y0 := max(0, (c.W-bw)/2), max(0, (area-bh)/2)
 	g.blit(bg, x0, y0, panel)
 	if arcade {
-		g.blit(arcadeGrid(max(bw, 52), len(registry), m.pulses, c.Now, label), x0, y0+bh, "")
+		g.blit(arcadeGrid(max(bw, 52), len(registry), m.pulses, c.Now, label), x0, c.H-arcadeH, "")
 	}
 	return g
 }

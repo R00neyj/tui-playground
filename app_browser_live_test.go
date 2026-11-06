@@ -500,3 +500,86 @@ func TestLiveNaverBlogUsesPostViewURL(t *testing.T) {
 		t.Fatalf("네이버 블로그 글은 iframe 없는 PostView 주소로 열어야 함: %q", nav)
 	}
 }
+
+func TestLiveDenseRowsPageBeforeScrollingThePage(t *testing.T) {
+	brResetMarks(t)
+	f := withFakeLive(t)
+	f.snap.Texts = nil
+	for i := 0; i < 40; i++ {
+		f.snap.Texts = append(f.snap.Texts, brSnapText{T: fmt.Sprintf("줄%02d", i), X: 8, Y: float64(i * 18), W: 40, H: 18, F: -1})
+	}
+	f.snap.Elems = nil
+	f.snap.VH = 720
+	a := newBrowserApp()
+	c := testCtx(100, 30)
+	a.View(c)
+	liveOpen(t, a, "live.test")
+	v := a.View(c)
+	if !strings.Contains(v, "줄00") || strings.Contains(v, "줄35") {
+		t.Fatalf("처음엔 앞쪽 줄만 보여야 함:\n%s", v)
+	}
+	scrolls := func() int {
+		n := 0
+		for _, c := range f.got() {
+			if strings.HasPrefix(c, "scroll ") {
+				n++
+			}
+		}
+		return n
+	}
+	_, cmd := a.Update(key(" "))
+	liveRun(t, a, cmd)
+	if v = a.View(c); !strings.Contains(v, "줄35") || scrolls() != 0 {
+		t.Fatalf("Space 는 안 보이던 아랫줄을 먼저 보여줘야 함 (페이지 스크롤 %d회):\n%s", scrolls(), v)
+	}
+	_, cmd = a.Update(key(" "))
+	liveRun(t, a, cmd)
+	if !strings.Contains(a.View(c), "줄39") || scrolls() != 0 {
+		t.Fatalf("마지막 줄까지 보여야 함 (페이지 스크롤 %d회)", scrolls())
+	}
+	_, cmd = a.Update(key(" "))
+	liveRun(t, a, cmd)
+	if scrolls() != 1 {
+		t.Fatalf("끝에 닿은 뒤에야 페이지를 스크롤해야 함: %d회", scrolls())
+	}
+}
+
+func TestLiveCursorDownPastEdgeMovesRowWindowFirst(t *testing.T) {
+	brResetMarks(t)
+	f := withFakeLive(t)
+	f.snap.Texts = nil
+	for i := 0; i < 30; i++ {
+		f.snap.Texts = append(f.snap.Texts, brSnapText{T: fmt.Sprintf("줄%02d", i), X: 8, Y: float64(i * 18), W: 40, H: 18, F: -1})
+	}
+	f.snap.Elems = nil
+	a := newBrowserApp()
+	c := testCtx(100, 30)
+	a.View(c)
+	liveOpen(t, a, "live.test")
+	a.ls.prow = a.vh - 1
+	a.Update(key("down"))
+	if a.ls.roff != 1 || a.ls.prow != a.vh {
+		t.Fatalf("가장자리에서 아래로 가면 줄 창이 한 줄 내려가야 함: roff=%d prow=%d", a.ls.roff, a.ls.prow)
+	}
+	if !strings.Contains(a.View(c), "줄20") {
+		t.Fatal("내려간 줄이 보여야 함")
+	}
+}
+
+func TestWordWrapNeverHangsOnNarrowWidth(t *testing.T) {
+	done := make(chan []string, 1)
+	go func() { done <- brWordWrap("한글 日本語 abc 가나다라마바사", 1) }()
+	select {
+	case got := <-done:
+		for _, l := range got {
+			if l == "" {
+				t.Fatalf("빈 줄이 섞이면 안 됨: %q", got)
+			}
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("칸 폭 1 에서 brWordWrap 이 끝나지 않음")
+	}
+	if got := brWordWrap("abc def", 0); got != nil {
+		t.Fatalf("폭 0 이면 비어야 함: %q", got)
+	}
+}
