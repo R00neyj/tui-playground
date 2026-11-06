@@ -246,3 +246,55 @@ func TestLiveSmokeAppScroll(t *testing.T) {
 		t.Logf("space %d: %v sy=%.0f rows=%d cursor=(%d,%d)→px(%.0f,%.0f) vh=%d", i, time.Since(t0).Round(time.Millisecond), a.ls.snap.SY, len(a.ls.scr.rows), a.ls.prow, a.ls.pcol, x, y, a.vh)
 	}
 }
+
+func TestLiveSmokeCrossOriginFrame(t *testing.T) {
+	if os.Getenv("TUI_LIVE_SMOKE") == "" {
+		t.Skip("TUI_LIVE_SMOKE 가 없어서 건너뜀")
+	}
+	exe := brFindEngineDefault()
+	if exe == "" {
+		t.Skip("Chrome/Edge 없음")
+	}
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body style="margin:0;background:#c00;color:#fff"><p style="padding:30px;font-size:30px">외부 프레임 글</p></body></html>`)
+	}))
+	defer other.Close()
+	page := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, `<html><body><p>위 글</p><iframe title="트윗" src="%s" style="width:400px;height:200px;border:0"></iframe><p>프레임 아래 글</p></body></html>`, other.URL)
+	}))
+	defer page.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	ch, err := brOpenChrome(ctx, exe, 80, 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ch.Close()
+	if err := ch.Navigate(ctx, page.URL); err != nil {
+		t.Fatal(err)
+	}
+	snap, err := ch.Snapshot(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap.Shot == nil {
+		t.Fatal("캡처 없음")
+	}
+	sc := brLayoutSnap(snap, 80)
+	pics, last := 0, -1
+	for i, r := range sc.rows {
+		for _, it := range r {
+			if it.pic != nil {
+				pics++
+				last = i
+			}
+			if strings.Contains(it.text, "프레임 아래 글") && last >= 0 && i <= last {
+				t.Fatalf("프레임 아래 글이 그림과 겹침: row %d, 그림 끝 %d", i, last)
+			}
+		}
+	}
+	if pics < 5 {
+		t.Fatalf("외부 프레임 그림 줄이 모자람: %d", pics)
+	}
+	t.Logf("그림 줄 %d, 전체 줄 %d", pics, len(sc.rows))
+}

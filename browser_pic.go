@@ -44,7 +44,7 @@ func (b *brChrome) capture(ctx context.Context, vw, vh float64) image.Image {
 	var r struct {
 		Data string `json:"data"`
 	}
-	p := map[string]any{"format": "jpeg", "quality": 55, "clip": map[string]any{"x": 0, "y": 0, "width": vw, "height": vh, "scale": 1}}
+	p := map[string]any{"format": "jpeg", "quality": 55}
 	if err := b.c.call(ctx, "Page.captureScreenshot", p, &r); err != nil || len(r.Data) == 0 || len(r.Data) > brShotMaxData {
 		return nil
 	}

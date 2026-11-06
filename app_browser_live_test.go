@@ -583,3 +583,42 @@ func TestWordWrapNeverHangsOnNarrowWidth(t *testing.T) {
 		t.Fatalf("폭 0 이면 비어야 함: %q", got)
 	}
 }
+
+func resizeCalls(f *fakeLive) []string {
+	var out []string
+	for _, c := range f.got() {
+		if strings.HasPrefix(c, "resize ") {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func TestLiveRefitGrowsViewportWhenRowsAreSparse(t *testing.T) {
+	brResetMarks(t)
+	f := withFakeLive(t)
+	a := newBrowserApp()
+	a.View(testCtx(100, 30))
+	liveOpen(t, a, "live.test")
+	rs := resizeCalls(f)
+	if len(rs) == 0 {
+		t.Fatalf("줄이 모자라고 아래에 내용이 더 있으면 화면 높이를 늘려야 함: %v", f.got())
+	}
+	var cols, rows int
+	fmt.Sscanf(rs[0], "resize %d %d", &cols, &rows)
+	if rows <= a.vh {
+		t.Fatalf("늘린 높이가 화면 줄(%d)보다 커야 함: %d", a.vh, rows)
+	}
+}
+
+func TestLiveRefitDoesNotGrowAtPageEnd(t *testing.T) {
+	brResetMarks(t)
+	f := withFakeLive(t)
+	f.snap.DH = f.snap.VH
+	a := newBrowserApp()
+	a.View(testCtx(100, 30))
+	liveOpen(t, a, "live.test")
+	if rs := resizeCalls(f); len(rs) != 0 {
+		t.Fatalf("페이지 끝이면 화면 높이를 늘리지 않아야 함: %v", rs)
+	}
+}

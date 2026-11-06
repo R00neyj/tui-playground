@@ -111,9 +111,16 @@ function visit(n,ctx,depth){
   if(tag==='IFRAME'||tag==='FRAME'){
     if(frames>=6)return;
     let d=null;try{d=n.contentDocument}catch(_){}
-    if(!d||!d.body)return;
     const r=n.getBoundingClientRect();
     if(r.width<2||r.height<2||r.bottom+oy<0||r.top+oy>vh)return;
+    if(!d){
+      if(r.width>=48&&r.height>=24&&r.right+ox>0&&r.left+ox<vw){
+        const top=Math.max(r.top+oy,0),bot=Math.min(r.bottom+oy,vh),ti=clean(n.title).slice(0,60);
+        texts.push({t:ti?'[삽입: '+ti+']':'[삽입 콘텐츠]',x:r.left+ox,y:top,w:r.width,h:Math.min(bot-top,40),f:ctx.f,b:0,hd:0,k:1,th:bot-top});
+      }
+      return;
+    }
+    if(!d.body)return;
     frames++;
     const pD=D,pox=ox,poy=oy;
     D=d;ox=pox+r.left;oy=poy+r.top;

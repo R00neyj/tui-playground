@@ -329,21 +329,32 @@ func (a *browserApp) onActDone(m brLiveMsg) tea.Cmd {
 	return tea.Batch(fit, a.pump())
 }
 
-// refit 은 칸 줄이 화면 줄보다 많으면 브라우저 화면 높이를 줄여 한 화면에 다 들어오게 함
+// refit 은 칸 줄 수가 화면 줄 수에 가깝도록 브라우저 화면 높이를 줄이거나(넘칠 때) 늘림(아래에 내용이 더 있는데 줄이 80% 미만일 때)
 func (a *browserApp) refit() tea.Cmd {
 	l := &a.ls
 	n := len(l.scr.rows)
-	if l.noFit || n <= a.vh || l.fitTries >= 3 || l.rows <= 6 {
+	if l.noFit || l.fitTries >= 3 || l.snap == nil || n == 0 {
 		return nil
 	}
-	nr := max(6, l.rows*a.vh/n)
-	if nr >= l.rows {
+	more := l.snap.SY+l.snap.VH < l.snap.DH-brCellH
+	var nr int
+	switch {
+	case n > a.vh && l.rows > 6:
+		nr = max(6, l.rows*a.vh/n)
+	case more && n*5 < a.vh*4:
+		nr = min(brFitMaxRows(a.vh), l.rows*a.vh/n)
+	default:
+		return nil
+	}
+	if nr == l.rows {
 		return nil
 	}
 	l.rows, l.fitted = nr, true
 	l.fitTries++
 	return a.act(brAct{kind: "resize", cols: l.cols, rows: nr})
 }
+
+func brFitMaxRows(vh int) int { return min(200, (vh+1)*3) }
 
 // resizeIfNeeded 는 창 크기가 바뀌었을 때 세션 화면 크기를 맞춤
 func (a *browserApp) resizeIfNeeded() tea.Cmd {
