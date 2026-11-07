@@ -32,7 +32,7 @@ Mode: **lite**
 | Development | 12 | [Hardening & verification](12-hardening.md) | done | `/wf-hardening` |
 | Release | 13 | [Pre-release](13-prerelease.md) | skipped (lite) | `/wf-prerelease` |
 | Release | 14 | [Internal test](14-internal-test.md) | skipped (lite) | `/wf-internal-test` |
-| Release | 15 | [Release](15-release.md) | not started ◀ now | `/wf-release` |
+| Release | 15 | [Release](15-release.md) | in progress ◀ now | `/wf-release` |
 
 Next up: **15. Release** → `/wf-release`
 <!-- wf:index:end -->
