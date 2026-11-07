@@ -5,9 +5,9 @@
 Created: 2026-11-07
 
 <!-- wf:release
-status: draft
+status: released
 version: 1.0.0
-url:
+url: https://github.com/R00neyj/tui-playground/releases/tag/v1.0.0
 check_on: 2026-11-21
 -->
 
@@ -58,6 +58,6 @@ On `check_on` (default: release + 14 days), measure the brief's success criteria
 | Item | Value |
 | --- | --- |
 | Version | v1.0.0 |
-| Date/time | |
-| URL | |
+| Date/time | 2026-11-07 18:57 (KST) |
+| URL | [releases/tag/v1.0.0](https://github.com/R00neyj/tui-playground/releases/tag/v1.0.0) — 응답 200, 첨부 exe SHA-256 `2167f0e7…a4f2` 일치 확인 |
 | Rollback method | GitHub Release `v1.0.0` 삭제 또는 pre-release 로 바꾸고, 이전 빌드 `eval-1` 을 안내함. 코드는 태그 이전 커밋으로 되돌릴 필요 없음(배포물은 exe 뿐) |

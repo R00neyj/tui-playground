@@ -32,9 +32,9 @@ Mode: **lite**
 | Development | 12 | [Hardening & verification](12-hardening.md) | done | `/wf-hardening` |
 | Release | 13 | [Pre-release](13-prerelease.md) | skipped (lite) | `/wf-prerelease` |
 | Release | 14 | [Internal test](14-internal-test.md) | skipped (lite) | `/wf-internal-test` |
-| Release | 15 | [Release](15-release.md) | in progress ◀ now | `/wf-release` |
+| Release | 15 | [Release](15-release.md) | done | `/wf-release` |
 
-Next up: **15. Release** → `/wf-release`
+All stages done.
 <!-- wf:index:end -->
 
 ## Decision log
@@ -54,6 +54,7 @@ Add one line each time a stage ends or the direction changes. Link the supportin
 | 2026-11-07 | 10 | 프로토타입 완료: 앱 8개 + 홈 꾸밈. feature 브랜치 2개를 main 에 병합, 문서를 새 번호(10-prototype.md)로 옮김, Windows Terminal 캡처 5장으로 디자인 점검(어긋남 없음) | [프로토타입](10-prototype.md) |
 | 2026-11-07 | 11 | 사용성 테스트 완료: T1~T3(종료 예약·취소, 포모도로 50/10) 모두 성공, 막힌 곳 없음. T4(프로그램 종료)는 업무 로직이 단순해 사용자 판단으로 생략 | [사용성 테스트](11-usability.md) |
 | 2026-11-07 | 12 | 마감 점검 완료: Must 인수 조건 13개 pass, 시스템 모니터 라벨 글자색 수정(H-01)·홈 Esc 종료 테스트 추가(H-02). 벨 소리·macOS/Linux 실행·큰 드라이브 스캔 속도는 릴리스 노트 한계로 | [마감 점검](12-hardening.md) |
+| 2026-11-07 | 15 | v1.0.0 릴리스(GitHub Release, exe 첨부). 미확인 low 1건(H-03)은 릴리스 노트에 한계로 적음. 성공 기준 재확인 2026-11-21 | [릴리스](15-release.md) |
 
 ## Open questions
 
