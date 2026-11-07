@@ -335,7 +335,7 @@ func (f *Frame) Spark(label string, vals []float64, max float64, col lipgloss.Co
 		}
 		b.WriteRune(rs[i])
 	}
-	return f.Row(sg(padR(label, 10)+" ", colorTextFaint), sg(b.String(), col))
+	return f.Row(sg(padR(label, 10)+" ", colorTextMuted), sg(b.String(), col))
 }
 
 // ---- 탭 줄 (DESIGN.md: Tab row) ----

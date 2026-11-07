@@ -29,12 +29,12 @@ Mode: **lite**
 | Development | 9 | [Tech design](09-tech.md) | skipped (lite) | `/wf-tech` |
 | Development | 10 | [Prototype](10-prototype.md) | done | `/wf-prototype` |
 | Development | 11 | [Usability test](11-usability.md) | done | `/wf-usability` |
-| Development | 12 | [Hardening & verification](12-hardening.md) | not started ◀ now | `/wf-hardening` |
+| Development | 12 | [Hardening & verification](12-hardening.md) | done | `/wf-hardening` |
 | Release | 13 | [Pre-release](13-prerelease.md) | skipped (lite) | `/wf-prerelease` |
 | Release | 14 | [Internal test](14-internal-test.md) | skipped (lite) | `/wf-internal-test` |
-| Release | 15 | [Release](15-release.md) | not started | `/wf-release` |
+| Release | 15 | [Release](15-release.md) | not started ◀ now | `/wf-release` |
 
-Next up: **12. Hardening & verification** → `/wf-hardening`
+Next up: **15. Release** → `/wf-release`
 <!-- wf:index:end -->
 
 ## Decision log
@@ -53,6 +53,7 @@ Add one line each time a stage ends or the direction changes. Link the supportin
 | 2026-11-05 | 2·3·6 | Feature-add cycle: F-07 시스템 모니터, F-08 Claude 사용량, F-09 Codex 사용량, F-10 스톱워치, F-11 할 일 추가. 기능 11개가 되어 명세를 02-spec/F-xx.md 로 분리, 화면 12개, 홈은 한 줄형 목록. DESIGN.md 에 컴포넌트 7개 추가 | [기능 명세](02-spec.md), [UX 플로차트](03-flow.md), [와이어프레임](06-wireframe/index.html), [DESIGN.md](../DESIGN.md) |
 | 2026-11-07 | 10 | 프로토타입 완료: 앱 8개 + 홈 꾸밈. feature 브랜치 2개를 main 에 병합, 문서를 새 번호(10-prototype.md)로 옮김, Windows Terminal 캡처 5장으로 디자인 점검(어긋남 없음) | [프로토타입](10-prototype.md) |
 | 2026-11-07 | 11 | 사용성 테스트 완료: T1~T3(종료 예약·취소, 포모도로 50/10) 모두 성공, 막힌 곳 없음. T4(프로그램 종료)는 업무 로직이 단순해 사용자 판단으로 생략 | [사용성 테스트](11-usability.md) |
+| 2026-11-07 | 12 | 마감 점검 완료: Must 인수 조건 13개 pass, 시스템 모니터 라벨 글자색 수정(H-01)·홈 Esc 종료 테스트 추가(H-02). 벨 소리·macOS/Linux 실행·큰 드라이브 스캔 속도는 릴리스 노트 한계로 | [마감 점검](12-hardening.md) |
 
 ## Open questions
 

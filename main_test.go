@@ -86,8 +86,14 @@ func TestHostFlow(t *testing.T) {
 	if m := mod.(model); m.ph != phHome || m.app != nil || m.sel != 0 {
 		t.Fatalf("홈으로 복귀하지 않음")
 	}
-	if _, cmd := mod.Update(key("q")); cmd == nil {
-		t.Fatalf("홈에서 q 로 종료되지 않음")
+	for _, k := range []string{"q", "esc"} { // F-01: 홈에서 Esc/q 로 종료
+		_, cmd := mod.Update(key(k))
+		if cmd == nil {
+			t.Fatalf("홈에서 %s 로 종료되지 않음", k)
+		}
+		if _, ok := cmd().(tea.QuitMsg); !ok {
+			t.Fatalf("홈에서 %s 의 결과가 종료가 아님", k)
+		}
 	}
 }
 
