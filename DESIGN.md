@@ -139,7 +139,12 @@ Code uses these names, never raw values. 값은 ANSI 16색 번호이고 실제 �
 | Virtual cursor | 방향키로 칸 단위로 움직이는 가상 마우스 커서. 커서 칸은 color.on-state 글자 + color.text 배경, 커서 아래 요소는 color.on-state 글자 + color.accent 배경 굵게. 같은 방향을 빠르게 누르면 가로 이동 폭이 커짐. 커서 아래 링크 주소·요소 이름은 메시지 줄에 보임(다른 사이트는 color.warn) | 기본, 요소 위, 입력 중 | 웹 브라우저 |
 | Wheel | 현재 칸을 가운데(`▸` + 굵은 accent, 결정되면 color.ok)에 두고 앞뒤 메뉴를 color.text-muted 로 보여주는 5줄 목록. 메뉴가 적어도 5줄을 차지해 화면이 흔들리지 않음 | 점심 룰렛 |
 | Canvas | 점자 캔버스(칸당 가로 2 x 세로 4 점)로 그리는 그림 본문. 점이 거의 정사각형이라 원이 둥글게 나옴. 빈 칸은 공백, 색은 기존 토큰만 씀. `TUI_FIDGET=block` 이면 블록 문자 대체 | 멍때리기 |
-| Fidget tab | 모드 탭 줄(Tab row 재사용) + Canvas 본문 + 상태 줄. 본문 줄 수 = 창 높이 − 9 (3~14) | 멍때리기 |
+| Fidget tab | 모드 탭 줄(Tab row 재사용) + Canvas 본문 + 상태 줄. 본문 줄 수 = 창 높이 − 9 (3~14). 탭이 한 줄을 넘으면 현재 모드 주변만 보이고 잘린 쪽에 `…` (color.text-muted) | 멍때리기 |
+| Half-block board | 게임 판 한 줄에 위아래 두 칸을 `▀▄█` 로 그림(위 칸 글자색, 아래 칸 배경색). 빈 칸 두 개는 바닥 점 `.`(color.text-faint, 판 범위 표시용 장식). 머리 color.text, 몸 color.accent, 먹이·부딪힌 머리 color.warn | 뱀 게임 |
+| Cell grid | 3칸 폭 칸 격자. 닫힌 칸 ` . `(muted), 열린 빈 칸 공백, 숫자 1 accent·2 ok·3 warn·4+ text(굵게), 깃발 ` F `(warn 굵게), 커서는 color.select 배경 + 굵게. 끝나면 지뢰 ` * `(warn), 밟은 지뢰는 warn 배경 + on-state 글자, 틀린 깃발 ` x `(muted) | 지뢰 찾기 |
+| Ladder | 기둥 `│`, 가로줄 `├──┤`/`┼`(muted). 고른 출발점의 길은 color.accent, 결과는 열기 전 `?`, 당첨은 color.ok | 결정 도구 |
+| Keyboard | 흰 건반 `███`(color.text, 1칸 틈), 검은 건반 `███`(color.text-faint, 틈 위 3칸, 장식), 누른 건반 0.2초 color.accent. 위아래에 실제 키 글자(muted)와 계이름 | 키보드 피아노 |
+| Go block | 반응속도의 "지금!" 신호: 본문 폭 전체를 `█` color.ok 로 채움(큰 화면 5줄, 작은 화면 1줄). Badge `지금!` 이 같이 나와 색만으로 구분하지 않음 | 반응속도 |
 
 ### Motion tokens (홈 꾸밈 전용)
 
@@ -165,3 +170,4 @@ Code uses these names, never raw values. 값은 ANSI 16색 번호이고 실제 �
 | 2026-11-06 | Live page 이미지를 색 칸 그림으로 | 이미지 자리가 빈 칸으로 보여 렌더가 안 된 것처럼 보인다는 피드백 |
 | 2026-11-06 | 아케이드 조작부를 창 맨 아래로 이동 | 박스 바로 밑에 붙어 있으면 어수선하다는 피드백 |
 | 2026-11-06 | Live page 화면 높이 맞춤·재읽기, 다른 출처 프레임 그림 | 스크롤 후 아래가 안 보이거나 빈 줄이 남고 트윗 임베드가 빈칸이라는 피드백. 칸 줄 수가 화면 줄 수에 맞게 Chrome 화면 높이를 줄이거나 늘리고(최대 3회), 불러온 뒤 최대 6번 다시 읽고, 읽을 수 없는 iframe 은 캡처 그림으로 그림 |
+| 2026-11-07 | Half-block board, Cell grid, Ladder, Keyboard, Go block 추가, Fidget tab 넘침 처리 | 미니게임·결정 도구·피아노 앱 5개와 멍때리기 모드 3개 추가. 모드가 6개라 탭이 최소 폭(50)을 넘어서 |

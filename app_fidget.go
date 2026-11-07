@@ -6,12 +6,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// 멍때리기 (F-16). 스피너·말랑이·뽁뽁이 모드를 Tab 으로 바꿔가며 가지고 놂 (모드는 fidget_*.go).
+// 멍때리기 (F-16). 스피너·말랑이·뽁뽁이·모래·생명 게임·불꽃놀이 모드를 Tab 으로 바꿔가며 가지고 놂 (모드는 fidget_*.go).
 
 var fidgetInfo = AppInfo{
 	ID:   "fidget",
 	Name: "멍때리기",
-	Desc: "스피너, 말랑이, 뽁뽁이",
+	Desc: "스피너, 뽁뽁이, 모래, 불꽃놀이 등",
 	New:  newFidgetApp,
 }
 
@@ -48,7 +48,7 @@ type fidgetApp struct {
 func newFidgetApp(env *Env) App {
 	return &fidgetApp{
 		gen:   newGen(),
-		modes: []fidgetMode{newSpinnerMode(), newSquishyMode(), newBubbleMode()},
+		modes: []fidgetMode{newSpinnerMode(), newSquishyMode(), newBubbleMode(), newSandMode(), newLifeMode(), newFireworksMode()},
 	}
 }
 
@@ -66,6 +66,9 @@ func (a *fidgetApp) wake() tea.Cmd {
 }
 
 func (a *fidgetApp) Update(msg tea.Msg) (App, tea.Cmd) {
+	if cmd, ok := forwardHangul(msg, func(m tea.Msg) tea.Cmd { _, c := a.Update(m); return c }); ok { // 한글 입력 상태에서도 단축키가 듣게 함
+		return a, cmd
+	}
 	switch m := msg.(type) {
 	case appTickMsg:
 		if m.Gen != a.gen || m.Tag != a.tag() || !a.ticking {
@@ -105,7 +108,8 @@ func (a *fidgetApp) View(c Ctx) string {
 	for i, md := range a.modes {
 		titles[i] = md.Title()
 	}
-	f := NewFrame(c).Tabs("", titles, a.cur)
+	f := NewFrame(c)
+	fidgetTabs(f, titles, a.cur)
 
 	rows := m.Rows(cw, ch)
 	for i := 0; i < ch; i++ {
@@ -119,4 +123,55 @@ func (a *fidgetApp) View(c Ctx) string {
 	f.MenuInline(append(append([][2]string{}, m.Keys()...), [2]string{"Tab", "모드"}, [2]string{"Esc", "홈으로"})...)
 	f.Rule().Message(m.Status(), ToneInfo)
 	return f.String()
+}
+
+// fidgetTabs 는 모드 탭 줄. 모드가 많아 한 줄에 다 안 들어가면 현재 모드 주변만 보이고 잘린 쪽에 … 를 붙임
+func fidgetTabs(f *Frame, titles []string, cur int) {
+	item := func(i int) seg {
+		if i == cur {
+			return sgBold("[ "+titles[i]+" ]", colorAccent)
+		}
+		return sg("  "+titles[i]+"  ", colorTextMuted)
+	}
+	width := func(lo, hi int) int {
+		w := 0
+		for i := lo; i <= hi; i++ {
+			w += item(i).width()
+		}
+		if lo > 0 {
+			w += 1
+		}
+		if hi < len(titles)-1 {
+			w += 1
+		}
+		return w
+	}
+	avail := f.In() - 4
+	lo, hi := cur, cur
+	for grew := true; grew; {
+		grew = false
+		if hi+1 < len(titles) && width(lo, hi+1) <= avail {
+			hi++
+			grew = true
+		}
+		if lo > 0 && width(lo-1, hi) <= avail {
+			lo--
+			grew = true
+		}
+	}
+	// 다 들어가면 Frame.Tabs 와 같은 앞 여백(6칸)을 둬서 다른 앱의 탭 줄과 위치를 맞춤
+	var segs []seg
+	if lo == 0 && hi == len(titles)-1 && width(lo, hi)+6 <= avail {
+		segs = append(segs, sg(sp(6), colorTextMuted))
+	}
+	if lo > 0 {
+		segs = append(segs, sg("…", colorTextMuted))
+	}
+	for i := lo; i <= hi; i++ {
+		segs = append(segs, item(i))
+	}
+	if hi < len(titles)-1 {
+		segs = append(segs, sg("…", colorTextMuted))
+	}
+	f.Row(segs...)
 }

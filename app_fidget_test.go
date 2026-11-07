@@ -127,8 +127,8 @@ func TestFidgetViewAligned(t *testing.T) {
 
 func TestFidgetRealModesRender(t *testing.T) {
 	a := newFidgetApp(&Env{}).(*fidgetApp)
-	if len(a.modes) != 3 {
-		t.Fatalf("모드가 3개여야 함: %d", len(a.modes))
+	if len(a.modes) != 6 {
+		t.Fatalf("모드가 6개여야 함: %d", len(a.modes))
 	}
 	for i := range a.modes {
 		a.cur = i

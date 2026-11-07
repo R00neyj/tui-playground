@@ -13,7 +13,14 @@ func (m model) viewHome(c Ctx) string {
 		f.Row(sg("등록된 앱 없음", colorTextMuted))
 		f.Row(sg("앱 파일을 추가하고 등록 목록에 한 줄을 넣으면 여기에 나타남", colorTextMuted))
 	}
-	for i, info := range registry {
+	// 창이 낮으면 선택한 줄 주변만 보여줌 (머리줄 3 + 빈 줄 2 + 아래 5 = 10줄을 뺀 만큼)
+	lo, hi := 0, len(registry)
+	if avail := max(3, c.H-10); len(registry) > avail {
+		lo = min(max(0, m.sel-avail/2), len(registry)-avail)
+		hi = lo + avail
+	}
+	for i := lo; i < hi; i++ {
+		info := registry[i]
 		selected := i == m.sel
 		mark, key := " ", "   "
 		if selected {
@@ -43,6 +50,9 @@ func (m model) viewHome(c Ctx) string {
 		descW := max(0, f.In()-4-2-len(key)-1-homeNameW-segsWidth(right)-2)
 		left := []seg{sg(mark+" ", colorAccent), sg(key+" ", colorTextMuted), nameSeg, sg(truncW(info.Desc, descW), colorTextMuted)}
 		f.RowLR(left, right)
+	}
+	if hint == "" && (lo > 0 || hi < len(registry)) {
+		hint = fmt.Sprintf("↑↓ 로 더 보기 (%d/%d)", m.sel+1, len(registry))
 	}
 	f.Blank().Rule()
 	n := len(registry)

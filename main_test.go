@@ -58,6 +58,15 @@ func TestHomeViewAligned(t *testing.T) {
 		c := testCtx(sz[0], sz[1])
 		v := m.viewHome(c)
 		assertFrame(t, "home", c, v)
+		if n := strings.Count(v, "\n") + 1; n > sz[1] {
+			t.Errorf("홈: %dx%d 창에서 %d줄로 창 높이를 넘음", sz[0], sz[1], n)
+		}
+		if sz[1]-10 < len(registry) { // 창이 낮으면 목록 일부만 보이고 더 보기 안내가 나옴
+			if !strings.Contains(plain(v), registry[0].Name) || !strings.Contains(plain(v), "더 보기") {
+				t.Errorf("홈 %dx%d: 첫 앱이나 더 보기 안내가 없음", sz[0], sz[1])
+			}
+			continue
+		}
 		for _, info := range registry {
 			if !strings.Contains(plain(v), info.Name) {
 				t.Errorf("홈에 앱 이름이 없음: %s", info.Name)

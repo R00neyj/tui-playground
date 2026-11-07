@@ -11,4 +11,9 @@ var registry = []AppInfo{
 	browserInfo,
 	lunchInfo,
 	fidgetInfo,
+	reactionInfo,
+	snakeInfo,
+	minesInfo,
+	decideInfo,
+	pianoInfo,
 }

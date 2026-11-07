@@ -51,7 +51,12 @@ func TestProgramEndToEnd(t *testing.T) {
 		t.Fatalf("홈 화면에 앱 이름이 보이지 않음")
 	}
 	for i, info := range registry {
-		send(strconv.Itoa(i + 1)) // 숫자키로 열기
+		if i < 9 {
+			send(strconv.Itoa(i + 1)) // 숫자키로 열기 (1~9)
+		} else {
+			send("\x1b[B") // 10번째부터는 숫자키가 없음: 직전 앱 다음 줄로 내려가서
+			send("\r")     // Enter 로 열기
+		}
 		time.Sleep(300 * time.Millisecond)
 		send("\x1b") // Esc — 처음 상태에서는 바로 홈으로 돌아와야 함
 		time.Sleep(150 * time.Millisecond)

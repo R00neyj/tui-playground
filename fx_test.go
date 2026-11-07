@@ -21,7 +21,9 @@ func TestMain(m *testing.M) {
 	}
 	settingsPath = func() string { return filepath.Join(dir, "settings.json") }
 	lunchPath = func() string { return filepath.Join(dir, "lunch.json") }
-	brFindEngine = func() string { return "" } // 테스트가 실제 Chrome/Edge 를 띄우지 않게 함 (필요한 테스트만 가짜를 끼움)
+	scoresPath = func() string { return filepath.Join(dir, "scores.json") }
+	pianoTone = func(float64, time.Duration) {} // 테스트에서 실제 소리를 내지 않음
+	brFindEngine = func() string { return "" }  // 테스트가 실제 Chrome/Edge 를 띄우지 않게 함 (필요한 테스트만 가짜를 끼움)
 	code := m.Run()
 	os.RemoveAll(dir)
 	os.Exit(code)

@@ -31,8 +31,19 @@ func (m model) arcadeFits(c Ctx) bool {
 		return false
 	}
 	// 홈 박스 기준으로 판단함 (설정 화면은 더 낮아서 같은 기준이면 항상 들어감. 설정 화면의 안내 문구가 이 함수를 부르므로 boxView 를 쓰면 무한 재귀가 됨)
-	bw, bh := boxSize(m.viewHome(c))
-	return bh+arcadeH <= c.H && bw <= c.W
+	// 홈 목록은 창이 낮으면 줄어드므로, 조작부 높이를 뺀 창에서 그린 홈 박스로 판단함
+	c2, ok := m.homeArcadeCtx(c)
+	if !ok {
+		return false
+	}
+	bw, bh := boxSize(m.viewHome(c2))
+	return bh <= c2.H && bw <= c.W
+}
+
+// homeArcadeCtx 는 조작부 높이를 뺀 창 크기. 남는 높이가 앱 최소 높이보다 낮으면 false
+func (m model) homeArcadeCtx(c Ctx) (Ctx, bool) {
+	c.H -= arcadeH
+	return c, c.H >= appMinH
 }
 
 // fxHome 은 칸 격자 합성 경로를 쓸지
@@ -67,7 +78,11 @@ func (m model) homeGrid(c Ctx) *grid {
 	if m.ph == phSettings {
 		label = "뒤로"
 	}
-	return m.composeGrid(c, m.boxView(c), m.arcadeFits(c), label)
+	if m.arcadeFits(c) {
+		c2, _ := m.homeArcadeCtx(c)
+		return m.composeGrid(c, m.boxView(c2), true, label)
+	}
+	return m.composeGrid(c, m.boxView(c), false, label)
 }
 
 func (m model) appGrid(c Ctx) *grid {

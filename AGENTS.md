@@ -27,7 +27,11 @@ go build -ldflags "-s -w" -o TUI-playground.exe .
 | `bg.go` `transition.go` `arcade.go` | 홈 배경 5종, 화면 전환 4종, 아케이드 조작부 |
 | `app_diskusage.go` | 디스크 사용량 트리맵 앱(읽기 전용, 폴더 스캔 + squarified 배치) |
 | `app_lunch.go` | 점심 룰렛 앱(메뉴가 돌다 느려지며 멈춤, 추가·삭제, `lunch.json` 저장) |
-| `app_fidget.go` `fidget_canvas.go` `fidget_spinner.go` `fidget_squishy.go` `fidget_bubble.go` | 멍때리기 앱. 호스트(탭·틱·`fidgetMode` 인터페이스) + 점자 캔버스 + 모드 3개. 새 모드는 `fidgetMode` 를 구현하고 `app_fidget.go` 의 `modes` 에 한 줄 추가 |
+| `app_fidget.go` `fidget_canvas.go` `fidget_world.go` `fidget_spinner.go` `fidget_squishy.go` `fidget_bubble.go` `fidget_sand.go` `fidget_life.go` `fidget_fireworks.go` | 멍때리기 앱. 호스트(탭·틱·`fidgetMode` 인터페이스) + 점자 캔버스 + 모드 6개(스피너·말랑이·뽁뽁이·모래·생명 게임·불꽃놀이). `fidget_world.go` 는 고정 크기 칸 세계를 창 크기에 맞춰 그리는 도구. 새 모드는 `fidgetMode` 를 구현하고 `app_fidget.go` 의 `modes` 에 한 줄 추가. 탭이 넘치면 현재 모드 주변만 보임 |
+| `app_reaction.go` `app_snake.go` `app_mines.go` | 미니게임: 반응속도(ms 측정), 뱀 게임(반 칸 글자로 40x16 판), 지뢰 찾기(15x9, 지뢰 18개, 첫 칸 안전) |
+| `app_decide.go` | 결정 도구: 주사위(1~5개)·동전·사다리 타기(2~6명) 탭 |
+| `app_piano.go` `piano_sound_windows.go` `piano_sound_other.go` `piano_wav.go` | 키보드 피아노. Windows 는 메모리에 만든 WAV 를 winmm `PlaySound` 로 비동기 재생. 터미널은 키 뗌을 알려주지 않아서 음마다 0.9초 울리고, 새 음을 누르면 아직 울리는 음과 섞어 다시 틂(거의 동시에 누르면 화음). `Beep` 은 호출이 성공해도 소리가 안 나는 PC 가 있어서 쓰지 않음. 다른 OS 는 소리 없이 건반만 빛남 |
+| `scores.go` | 미니게임 최고 기록 저장 (사용자 설정 폴더의 `TUI-playground/scores.json`) |
 | `app_browser.go` `app_browser_live.go` `browser_cdp.go` `browser_snap.go` `browser_parse.go` `browser_render.go` `browser_marks.go` `browser_kill_*.go` | 웹 브라우저 앱. 라이브 모드(설치된 Chrome/Edge 를 DevTools 프로토콜로 조종, 페이지를 칸 격자에 그리고 방향키 가상 커서 + Enter 클릭, 입력창에 글자 입력)와 리더 모드(내려받기, 문자 코드 변환, 본문 추출, 줄바꿈, 제어문자 제거, 빠른 이동 목록·검색). 의존: golang.org/x/net(html, websocket), x/text |
 | `settings.go` | 홈 설정(배경·전환·조작부) 저장과 설정 화면. 저장 위치는 사용자 설정 폴더의 `TUI-playground/settings.json` |
 | `main_test.go` | 파싱, 예약 로직, 화면 정렬, 동기화 테스트 |
@@ -58,6 +62,9 @@ go build -ldflags "-s -w" -o TUI-playground.exe .
 - 응답과 문서는 한국어로 작성함
 - 홈 배경·전환은 터미널이 색을 지원할 때만 켜짐(`TUI_ANIM=off` 로 끌 수 있음). 테스트는 `forceProfile` 로 색 모드를 바꿔 끼우고, `TestMain` 이 설정 파일 경로를 임시 폴더로 돌려놓음
 - 앱 테스트는 실제 네트워크와 실제 드라이브를 건드리지 않음 (`brWithFetch`, `scanTree` 를 가짜로 바꿔 끼움)
+- 피아노 테스트는 실제 소리를 내지 않음 (`TestMain` 이 `pianoTone` 을 비워 두고, `scoresPath` 도 임시 폴더로 돌림)
+- 단축키를 쓰는 앱(멍때리기·게임·결정 도구·피아노)은 Update 맨 앞에서 `forwardHangul` 로 한글 자모(두벌식)를 영문 키로 바꿔 받음 (`keys_hangul.go`). 글자를 입력받는 화면에는 쓰지 않음
+- 홈 목록은 숫자키가 1~9 까지만 있음. 10번째 앱부터는 ↑↓ + Enter 로 열고, 창이 낮으면 선택한 줄 주변만 보임
 - 이 세션 같은 환경에서 `NO_COLOR` 가 켜져 있으면 배경·전환이 꺼짐. 눈으로 확인할 때는 `set NO_COLOR=` 로 지우고 실행할 것
 - 웹 브라우저 테스트는 실제 브라우저(Chrome/Edge)를 띄우지 않음 (`TestMain` 이 `brFindEngine` 을 비워 둠). 실제 렌더링을 눈으로 확인할 때만 `brFindEngineDefault` 를 직접 끼워서 돌릴 것
 - 웹 브라우저 라이브 모드: Esc 는 입력 중이면 입력만 끝내고, 아니면 브라우저 세션을 닫고 홈으로 감 (Esc 는 언제나 홈이라는 규칙의 유일한 예외)
